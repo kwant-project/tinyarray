@@ -1,0 +1,5 @@
+* 0-d arrays should not be sequences.  Currently there are problems with using
+  0-d arrays with PySequence_Fast.
+
+* Consider reducing the amount of templated code by having more dtype-flexible
+  code.

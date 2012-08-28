@@ -1,37 +1,96 @@
 #ifndef ARRAY_HH
 #define ARRAY_HH
 
-#include <climits>
+#include <complex>
+typedef std::complex<double> Complex;
 
-enum class Dtype : char {DOUBLE = 0, COMPLEX, LONG, NONE};
+const int max_ndim = 16;
+
+enum class Dtype : char {LONG = 0, DOUBLE, COMPLEX, NONE};
 const Dtype default_dtype = Dtype::DOUBLE;
-int dtype_converter(const PyObject *ob, Dtype *dtype);
 
-const int max_ndim = 3;
-typedef unsigned short Shape_t;
+#define DTYPE_DISPATCH(func) {func<long>, func<double>, func<Complex>}
 
-// Set NO_OVERFLOW_DANGER if the linear index of an array entry calculated for
-// a valid shape can never overflow.
-// KEEP THE FOLLOWING CONSISTENT WITH THE PREVIOUS DEFINITIONS.
-#if ((((size_t)-1)>>1) >= 3 * USHRT_MAX)
-#ifdef NDEBUG
-#define NO_OVERFLOW_DANGER
-#endif
-#endif
+// We use the ob_size field in a clever way to encode either the length of a
+// 1-d array, or the number of dimensions for multi-dimensional arrays.  The
+// following code codifies the conventions.
+class Array_base {
+public:
+    void ndim_shape(int *ndim, size_t **shape) {
+        const Py_ssize_t ob_size = ob_base.ob_size;
+        if (ob_size >= 0) {
+            if (ndim) *ndim = 1;
+            if (shape) *shape = (size_t*)&ob_base.ob_size;
+        } else if (ob_size < -1) {
+            if (ndim) *ndim = -ob_size;
+            if (shape) *shape = (size_t*)((char*)this + sizeof(Array_base));
+        } else {
+            if (ndim) *ndim = 0;
+            if (shape) *shape = 0;
+        }
+    }
 
-struct Array {
-    PyObject_VAR_HEAD
-    Py_ssize_t *buffer_internal; // Can be removed for Python 3.3, see array.cc
-    Dtype dtype;
-    unsigned char ndim;
-    Shape_t shape[max_ndim];
-    long ob_item[1];
+protected:
+    PyVarObject ob_base;
 };
 
-PyAPI_DATA(PyTypeObject) Array_type;
+extern "C" void inittinyarray();
 
-#define array_check_exact(op) (Py_TYPE(op) == &Array_type)
+template <typename T>
+class Array : public Array_base {
+public:
+    T *data() {
+        if (ob_base.ob_size >= -1) {
+            // ndim == 0 or 1
+            return ob_item;
+        } else {
+            // ndim > 1
+            return ob_item + (-ob_base.ob_size * sizeof(size_t) +
+                              sizeof(T) - 1) / sizeof(T);
+        }
+    }
 
-Array *array_make(PyObject *shape_obj, Dtype dtype);
+    static bool check_exact(PyObject *candidate) {
+        return (Py_TYPE(candidate) == &pytype);
+    }
+
+    static Array<T> *make(int ndim, size_t size);
+    static Array<T> *make(int ndim, const size_t *shape, size_t *size = 0);
+
+    static const char *pyname, *pyformat;
+private:
+    T ob_item[1];
+
+    static PySequenceMethods as_sequence;
+    static PyMappingMethods as_mapping;
+    static PyBufferProcs as_buffer;
+    static PyTypeObject pytype;
+
+    friend Dtype get_dtype(PyObject *obj);
+    friend void inittinyarray();
+};
+
+Py_ssize_t load_seq_as_long(PyObject *obj, long *out, Py_ssize_t maxlen);
+Py_ssize_t load_seq_as_ulong(PyObject *obj, unsigned long *uout,
+                             Py_ssize_t maxlen, const char *errmsg = 0);
+
+inline size_t calc_size(int ndim, const size_t *shape)
+{
+    if (ndim == 0) return 1;
+    size_t result = shape[0];
+    for (int d = 1; d < ndim; ++d) result *= shape[d];
+    return result;
+}
+
+inline Dtype get_dtype(PyObject *obj)
+{
+    PyTypeObject *pytype = Py_TYPE(obj);
+    if (pytype == &Array<long>::pytype) return Dtype::LONG;
+    if (pytype == &Array<double>::pytype) return Dtype::DOUBLE;
+    if (pytype == &Array<Complex>::pytype) return Dtype::COMPLEX;
+    return Dtype::NONE;
+}
+
+PyObject *array_from_arraylike(PyObject *src, Dtype *dtype);
 
 #endif // !ARRAY_HH

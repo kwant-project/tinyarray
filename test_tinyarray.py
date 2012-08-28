@@ -1,86 +1,153 @@
 import tinyarray as ta
 from nose.tools import assert_raises
 import numpy as np
-from numpy.testing import assert_equal
+from numpy.testing import assert_equal, assert_almost_equal
+
+dtypes = [int, float, complex]
+
+
+def make(shape, dtype):
+    result = np.arange(np.prod(shape), dtype=int)
+    if dtype in (float, complex):
+        result = result + 0.1 * result
+    if dtype == complex:
+        result = result + -0.5j * result
+    return result.reshape(shape)
+
+
+def shape_of_seq(seq, r=()):
+    try:
+        l = len(seq)
+    except:
+        return r
+    if l == 0:
+        return r + (0,)
+    return shape_of_seq(seq[0], r + (l,))
 
 
 def test_array():
-    for shape in [(), 0, 1, 2, 3, (0, 0), (1, 0), (0, 1), (2, 2), (17, 17),
-                  (0, 0, 0), (1, 1, 1), (2, 2, 1), (2, 0, 3)]:
-        a = np.arange(np.prod(shape), dtype=int).reshape(shape)
+    for dtype in dtypes:
+        for a_shape in [(), 0, 1, 2, 3,
+                        (0, 0), (1, 0), (0, 1), (2, 2), (17, 17),
+                        (0, 0, 0), (1, 1, 1), (2, 2, 1), (2, 0, 3)]:
+            a = make(a_shape, dtype)
 
-        l = a.tolist()
-        b = ta.array(l)
-        assert isinstance(repr(b), str)
-        if shape != ():
-            assert_equal(len(b), len(a))
-        else:
-            assert_raises(TypeError, len, b)
-        assert_equal(memoryview(b).tobytes(), memoryview(a).tobytes())
-        assert_equal(np.array(b), np.array(l))
+            l = a.tolist()
+            b = ta.array(l)
+            b_shape = shape_of_seq(l)
 
-        # Here, the tinyarray is created via the buffer interface.  It's
-        # possible to distinguish shape 0 from (0, 0).
-        # b = ta.array(a)
-        # assert_equal(np.array(b), a)
+            # a_shape and b_shape are not always equal.  Example: a_shape ==
+            # (0, 0), b_shape = (0,).
 
-    assert_raises(ValueError, ta.array, xrange(100000), int)
-    assert_raises(ValueError, ta.array, [[[[]]]], int)
-    assert_raises(TypeError, ta.array, [0, [0, 0]], int)
-    assert_raises(ValueError, ta.array, [[0], [0, 0]], int)
-    assert_raises(ValueError, ta.array, [[0, 0], 0], int)
-    assert_raises(ValueError, ta.array, [[0, 0], [0]], int)
-    assert_raises(ValueError, ta.array, [[0, 0], [[0], [0]]], int)
+            assert isinstance(repr(b), str)
+            assert_equal(b.ndim, len(b_shape))
+            assert_equal(tuple(b.shape), b_shape)
+            assert_equal(b.size, a.size)
+            if a_shape != ():
+                assert_equal(len(b), len(a))
+                assert_equal(np.array(ta.array(b)), np.array(l))
+            else:
+                assert_equal(b.dtype, dtype)
+                assert_raises(TypeError, len, b)
+            assert_equal(memoryview(b).tobytes(), memoryview(a).tobytes())
+            assert_equal(np.array(b), np.array(l))
+
+            # Here, the tinyarray is created via the buffer interface.  It's
+            # possible to distinguish shape 0 from (0, 0).
+            # b = ta.array(a)
+            # assert_equal(np.array(b), a)
+
+        l = []
+        for i in range(16):
+            l = [l]
+        assert_raises(ValueError, ta.array, l, dtype)
+
+        assert_raises(TypeError, ta.array, [0, [0, 0]], dtype)
+        assert_raises(ValueError, ta.array, [[0], [0, 0]], dtype)
+        assert_raises(ValueError, ta.array, [[0, 0], 0], dtype)
+        assert_raises(ValueError, ta.array, [[0, 0], [0]], dtype)
+        assert_raises(ValueError, ta.array, [[0, 0], [[0], [0]]], dtype)
 
 
 def test_special_constructors():
-    for n in [0, 1, 2, 3, 17]:
-        assert_equal(ta.zeros(n, int), np.zeros(n, int))
-        assert_equal(ta.ones(n, int), np.ones(n, int))
-        assert_equal(ta.identity(n, int), np.identity(n, int))
+    for dtype in dtypes:
+        for n in [0, 1, 2, 3, 17]:
+            assert_equal(ta.zeros(n, dtype), np.zeros(n, dtype))
+            assert_equal(ta.ones(n, dtype), np.ones(n, dtype))
+            assert_equal(ta.identity(n, dtype), np.identity(n, dtype))
 
 
 def test_dot():
     # Check acceptance of non-tinyarray arguments.
     assert_equal(ta.dot([1, 2], (3, 4)), 11)
 
-    # The commented testcases can be added once there is support for creating
-    # tinyarrays via the buffer interface.
-    shape_pairs = [(1, 1), (2, 2), (3, 3),
-                   # (0, 0),
-                   # (0, (0, 1)), ((0, 1), 1),
-                   # (0, (0, 2)), ((0, 2), 2),
-                   (1, (1, 2)), ((2, 1), 1),
-                   (2, (2, 1)), ((1, 2), 2),
-                   (2, (2, 3)), ((3, 2), 2),
-                   ((1, 1), (1, 1)), ((2, 2), (2, 2)),
-                   ((3, 3), (3, 3)), ((2, 3), (3, 2)), ((2, 1), (1, 2)),
-                   ((2, 3, 4), (4, 3)),
-                   ((2, 3, 4), 4),
-                   ((3, 4), (2, 4, 3)),
-                   (4, (2, 4, 3))]
-    for sa, sb in shape_pairs:
-        a = np.arange(np.prod(sa), dtype=int).reshape(sa)
-        b = np.arange(np.prod(sb), dtype=int).reshape(sb) - 5
-        assert_equal(ta.dot(ta.array(a), ta.array(b)), np.dot(a, b))
+    for dtype in dtypes:
+        # The commented testcases can be added once there is support for
+        # creating tinyarrays via the buffer interface.
+        shape_pairs = [(1, 1), (2, 2), (3, 3),
+                       # (0, 0),
+                       # (0, (0, 1)), ((0, 1), 1),
+                       # (0, (0, 2)), ((0, 2), 2),
+                       (1, (1, 2)), ((2, 1), 1),
+                       (2, (2, 1)), ((1, 2), 2),
+                       (2, (2, 3)), ((3, 2), 2),
+                       ((1, 1), (1, 1)), ((2, 2), (2, 2)),
+                       ((3, 3), (3, 3)), ((2, 3), (3, 2)), ((2, 1), (1, 2)),
+                       ((2, 3, 4), (4, 3)),
+                       ((2, 3, 4), 4),
+                       ((3, 4), (2, 4, 3)),
+                       (4, (2, 4, 3))]
 
-    # The commented out testcases do not work due to a bug in numpy:
-    # PySequence_Check should return 0 for 0-d arrays.
-    shape_pairs = [#((), 2), (2, ()),
-                   (1, 2),
-                   (1, (2, 2)), ((1, 1), 2),
-                   ((2, 2), (3, 2)),
-                   ((2, 3, 2), (4, 3)),
-                   ((2, 3, 4), 3),
-                   ((3, 3), (2, 4, 3)),
-                   (3, (2, 4, 3)),
-                   ((2, 2, 2), (2, 2, 2))]
-    for sa, sb in shape_pairs:
-        a = np.arange(np.prod(sa), dtype=int).reshape(sa)
-        b = np.arange(np.prod(sb), dtype=int).reshape(sb) - 5
-        assert_raises(ValueError, ta.dot, ta.array(a), ta.array(b))
+        # We have to use almost_equal here because the result of numpy's dot
+        # does not always agree to the last bit with a naive implementation.
+        # (This is probably due to usage of SSE or parallelization.)
+        #
+        # On my machine in summer 2012 with Python 2.7 and 3.2 the program
+        #
+        # import numpy as np
+        # a = np.array([13.2, 14.3, 15.4, 16.5])
+        # b = np.array([-5.0, -3.9, -2.8, -1.7])
+        # r = np.dot(a, b)
+        # rr = sum(x * y for x, y in zip(a, b))
+        # print(r - rr)
+        #
+        # outputs 2.84217094304e-14.
+        for sa, sb in shape_pairs:
+            a = make(sa, dtype)
+            b = make(sb, dtype) - 5
+            assert_almost_equal(ta.dot(ta.array(a), ta.array(b)), np.dot(a, b),
+                                13)
+
+        # The commented out testcases do not work due to a bug in numpy:
+        # PySequence_Check should return 0 for 0-d arrays.
+        shape_pairs = [#((), 2), (2, ()),
+                       (1, 2),
+                       (1, (2, 2)), ((1, 1), 2),
+                       ((2, 2), (3, 2)),
+                       ((2, 3, 2), (4, 3)),
+                       ((2, 3, 4), 3),
+                       ((3, 3), (2, 4, 3)),
+                       (3, (2, 4, 3))]
+        for sa, sb in shape_pairs:
+            a = make(sa, dtype)
+            b = make(sb, dtype) - 5
+            assert_raises(ValueError, ta.dot, ta.array(a), ta.array(b))
+
+
+def test_iteration():
+    for dtype in dtypes:
+        assert_raises(TypeError, tuple, ta.array(1, dtype))
+        for i in [0, 1, 2, 3, 15]:
+            t = tuple(xrange(i))
+            assert_equal(tuple(ta.array(t, dtype)), t)
+
+            if i != 0:
+                t = ta.identity(i, dtype)
+                assert_equal(np.array(ta.array(tuple(t))), np.array(t))
 
 
 def test_hash():
     n = 100
-    assert_equal(len(set(hash(ta.array(range(i))) for i in range(n))), n)
+    for dtype in dtypes:
+        s = set(hash(ta.array(range(i), dtype)) for i in range(n))
+        assert_equal(len(s), n)
