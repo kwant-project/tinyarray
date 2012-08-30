@@ -64,6 +64,7 @@ private:
     static PySequenceMethods as_sequence;
     static PyMappingMethods as_mapping;
     static PyBufferProcs as_buffer;
+    static PyNumberMethods as_number;
     static PyTypeObject pytype;
 
     friend Dtype get_dtype(PyObject *obj);
@@ -91,6 +92,13 @@ inline Dtype get_dtype(PyObject *obj)
     return Dtype::NONE;
 }
 
-PyObject *array_from_arraylike(PyObject *src, Dtype *dtype);
+PyObject *array_from_arraylike(PyObject *src, Dtype *dtype,
+                               Dtype min_dtype = Dtype(0));
+
+template<typename O, typename I>
+Array<O> *promote_array(Array<I> *in);
+
+PyObject *promote_array(Dtype out_dtype, PyObject *in,
+                        Dtype in_dtype = Dtype::NONE);
 
 #endif // !ARRAY_HH

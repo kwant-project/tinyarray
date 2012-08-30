@@ -1,3 +1,5 @@
+* Add missing arithmetic operations.
+
 * 0-d arrays should not be sequences.  Currently there are problems with using
   0-d arrays with PySequence_Fast.
 

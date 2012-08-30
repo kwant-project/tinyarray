@@ -792,10 +792,10 @@ Py_ssize_t load_index_seq_as_ulong(PyObject *obj, unsigned long *uout,
     return len;
 }
 
-// If *dtype == Dtype::NONE the simplest fitting dtype for the array will be
-// used and written back to *dtype.  Any other value of *dtype requests an
-// array of a given dtype.
-PyObject *array_from_arraylike(PyObject *src, Dtype *dtype)
+// If *dtype == Dtype::NONE the simplest fitting dtype (at least min_dtype)
+// will be used and written back to *dtype.  Any other value of *dtype requests
+// an array of the given dtype.
+PyObject *array_from_arraylike(PyObject *src, Dtype *dtype, Dtype min_dtype)
 {
     int ndim;
     size_t shape[max_ndim];
@@ -809,6 +809,7 @@ PyObject *array_from_arraylike(PyObject *src, Dtype *dtype)
             assert(shape[ndim - 1] == 0);
             *dtype = default_dtype;
         }
+        if (int(*dtype) < int(min_dtype)) *dtype = min_dtype;
         while (true) {
             PyObject *result = make_and_readin_array_dtable[int(*dtype)](
                 src, ndim, shape, seqs, true);
@@ -833,6 +834,39 @@ PyObject *array_from_arraylike(PyObject *src, Dtype *dtype)
             return 0;
         return make_and_readin_array_dtable[int(*dtype)](
             src, ndim, shape, seqs, false);
+    }
+}
+
+template<typename O, typename I>
+Array<O> *promote_array(Array<I> *in)
+{
+    int ndim;
+    size_t *shape, size;
+    in->ndim_shape(&ndim, &shape);
+    Array<O> *out = Array<O>::make(ndim, shape, &size);
+    if (!out) return 0;
+    I *src = in->data();
+    O *dest = out->data();
+    for (size_t i = 0; i < size; ++i) dest[i] = src[i];
+    return out;
+}
+
+PyObject *promote_array(Dtype out_dtype, PyObject *in, Dtype in_dtype)
+{
+    if (in_dtype == Dtype::NONE)
+        in_dtype = get_dtype(in);
+    assert(get_dtype(in) == get_dtype(in));
+    if (out_dtype == Dtype::DOUBLE) {
+        assert(in_dtype == Dtype::LONG);
+        return (PyObject*)promote_array<double>((Array<long>*)in);
+    } else {
+        assert(out_dtype == Dtype::COMPLEX);
+        if (in_dtype == Dtype::LONG) {
+            return (PyObject*)promote_array<Complex>((Array<long>*)in);
+        } else {
+            assert(in_dtype == Dtype::DOUBLE);
+            return (PyObject*)promote_array<Complex>((Array<double>*)in);
+        }
     }
 }
 
@@ -924,31 +958,25 @@ PyTypeObject Array<T>::pytype = {
     0,                              // tp_setattr
     0,                              // tp_compare
     (reprfunc)repr<T>,              // tp_repr
-    0/*&as_number*/,                     // tp_as_number
-
+    &as_number,                     // tp_as_number
     &as_sequence,                   // tp_as_sequence
     &as_mapping,                    // tp_as_mapping
-
     (hashfunc)hash<T>,              // tp_hash
-
     0,                              // tp_call
     (reprfunc)str<T>,               // tp_str
     PyObject_GenericGetAttr,        // tp_getattro
     0,                              // tp_setattro
-    &as_buffer,           // tp_as_buffer
-    Py_TPFLAGS_DEFAULT
-    | Py_TPFLAGS_HAVE_NEWBUFFER,    // tp_flags
+    &as_buffer,                     // tp_as_buffer
+    Py_TPFLAGS_DEFAULT |
+    Py_TPFLAGS_HAVE_NEWBUFFER |
+    Py_TPFLAGS_CHECKTYPES,          // tp_flags
     doc,                            // tp_doc
     0,                              // tp_traverse
     0,                              // tp_clear
-
     // richcompare,                    // tp_richcompare
     0,                              // tp_richcompare
-
     0,                              // tp_weaklistoffset
-
     (getiterfunc)Array_iter<T>::make, // tp_iter
-
     0,                              // tp_iternext
     0,                              // tp_methods
     0,                              // tp_members

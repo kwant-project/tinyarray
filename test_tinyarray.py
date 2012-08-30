@@ -1,3 +1,4 @@
+import operator, warnings
 import tinyarray as ta
 from nose.tools import assert_raises
 import numpy as np
@@ -151,3 +152,36 @@ def test_hash():
     for dtype in dtypes:
         s = set(hash(ta.array(range(i), dtype)) for i in range(n))
         assert_equal(len(s), n)
+
+
+def test_broadcasting():
+    for sa in [(), 1, (1, 1, 1, 1), 2, (3, 2), (4, 3, 2), (5, 4, 3, 2)]:
+        for sb in [(), 1, (1, 1), (4, 1, 1), 2, (1, 2), (3, 1), (1, 3, 2)]:
+            a = make(sa, int)
+            b = make(sb, int)
+            assert_equal(ta.array(a.tolist()) + ta.array(b.tolist()), a + b)
+
+
+def test_promotion():
+    for dtypea in dtypes:
+        for dtypeb in dtypes:
+            a = make(3, dtypea)
+            b = make(3, dtypeb)
+            assert_equal(ta.array(a.tolist()) + ta.array(b.tolist()), a + b)
+
+
+def test_binary_operators():
+    ops = operator
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+        for op in [ops.add, ops.sub, ops.mul, ops.div, ops.mod, ops.floordiv]:
+            for dtype in dtypes:
+                for shape in [(), 1, 3]:
+                    if dtype is complex and op in [ops.mod, ops.floordiv]:
+                        continue
+                    a = make(shape, dtype)
+                    b = make(shape, dtype)
+                    assert_equal(
+                        op(ta.array(a.tolist()), ta.array(b.tolist())),
+                        op(a, b))

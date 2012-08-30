@@ -106,59 +106,12 @@ PyObject *array(PyObject *, PyObject *args)
     return array_from_arraylike(src, &dtype);
 }
 
-PyObject *(*array_scalar_product_dtable[])(PyObject*, PyObject*) =
-    DTYPE_DISPATCH(array_scalar_product);
-PyObject *(*array_matrix_product_dtable[])(PyObject*, PyObject*) =
-    DTYPE_DISPATCH(array_matrix_product);
-
 PyObject *dot(PyObject *, PyObject *args)
 {
     PyObject *a, *b;
     if (!PyArg_ParseTuple(args, "OO", &a, &b))
         return 0;
-    Dtype dtype_a = get_dtype(a), dtype_b = get_dtype(b);
-
-    // Make sure a and b are tinyarrays.
-    if (dtype_a != Dtype::NONE) {
-        Py_INCREF(a);
-    } else {
-        a = array_from_arraylike(a, &dtype_a);
-        if (!a) return 0;
-    }
-    if (dtype_b != Dtype::NONE) {
-        Py_INCREF(b);
-    } else {
-        b = array_from_arraylike(b, &dtype_b);
-        if (!b) {
-            Py_DECREF(a);
-            return 0;
-        }
-    }
-
-    PyObject *result = 0;
-    size_t ndim_a, ndim_b;
-    reinterpret_cast<Array_base*>(a)->ndim_shape(&ndim_a, 0);
-    reinterpret_cast<Array_base*>(b)->ndim_shape(&ndim_b, 0);
-    if (ndim_a == 0 || ndim_b == 0) {
-        PyErr_SetString(PyExc_ValueError,
-                        "dot does not support zero-dimensional arrays yet.");
-        goto end;
-    }
-    if (dtype_a != dtype_b) {
-        PyErr_SetString(PyExc_ValueError,
-                        "Dtype must be the same for now.");
-        goto end;
-    }
-
-    if (ndim_a == 1 && ndim_b == 1)
-        result = array_scalar_product_dtable[int(dtype_a)](a, b);
-    else
-        result = array_matrix_product_dtable[int(dtype_a)](a, b);
-
-end:
-    Py_DECREF(a);
-    Py_DECREF(b);
-    return result;
+    return dot_product(a, b);
 }
 
 } // Anonymous namespace
