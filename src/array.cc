@@ -305,7 +305,7 @@ Py_ssize_t len(Array_base *self)
 Py_ssize_t index_from_key(int ndim, const size_t *shape, PyObject *key)
 {
     long indices[max_ndim];
-    Py_ssize_t res = load_seq_as_long(key, indices, max_ndim);
+    Py_ssize_t res = load_index_seq_as_long(key, indices, max_ndim);
     if (res == -1) {
         PyErr_SetString(PyExc_IndexError, "Invalid index.");
         return -1;
@@ -743,27 +743,26 @@ void inittinyarray()
     if (complex_str == 0) return;
 }
 
-Py_ssize_t load_seq_as_long(PyObject *obj, long *out, Py_ssize_t maxlen)
+Py_ssize_t load_index_seq_as_long(PyObject *obj, long *out, Py_ssize_t maxlen)
 {
     assert(maxlen >= 1);
     Py_ssize_t len;
     if (PySequence_Check(obj)) {
-        obj = PySequence_Fast(obj, "Bug in tinyarray, load_seq_as_long");
+        obj = PySequence_Fast(obj, "Bug in tinyarray, load_index_seq_as_long");
         if (!obj) return -1;
         len = PySequence_Fast_GET_SIZE(obj);
         if (len > maxlen) {
             PyErr_Format(PyExc_ValueError, "Sequence too long."
                          " Maximum length is %ld.", maxlen);
-            Py_DECREF(obj);
-            return -1;
+            goto fail;
         }
         for (PyObject **p = PySequence_Fast_ITEMS(obj), **e = p + len; p < e;
              ++p, ++out) {
-            *out = PyInt_AsLong(*p);
-            if (*out == -1 and PyErr_Occurred()) {
-                Py_DECREF(obj);
-                return -1;
-            }
+            PyObject *index = PyNumber_Index(*p);
+            if (index == 0) goto fail;
+            *out = PyInt_AsLong(index);
+            Py_DECREF(index);
+            if (*out == -1 and PyErr_Occurred()) goto fail;
         }
     } else {
         len = 1;
@@ -771,13 +770,17 @@ Py_ssize_t load_seq_as_long(PyObject *obj, long *out, Py_ssize_t maxlen)
         if (*out == -1 and PyErr_Occurred()) return -1;
     }
     return len;
+
+fail:
+    Py_DECREF(obj);
+    return -1;
 }
 
-Py_ssize_t load_seq_as_ulong(PyObject *obj, unsigned long *uout,
-                             Py_ssize_t maxlen, const char *errmsg)
+Py_ssize_t load_index_seq_as_ulong(PyObject *obj, unsigned long *uout,
+                                   Py_ssize_t maxlen, const char *errmsg)
 {
     long *out = reinterpret_cast<long*>(uout);
-    Py_ssize_t len = load_seq_as_long(obj, out, maxlen);
+    Py_ssize_t len = load_index_seq_as_long(obj, out, maxlen);
     if (len == -1) return -1;
     for (Py_ssize_t i = 0; i < len; ++i)
         if (out[i] < 0) {

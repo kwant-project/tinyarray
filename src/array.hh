@@ -70,9 +70,9 @@ private:
     friend void inittinyarray();
 };
 
-Py_ssize_t load_seq_as_long(PyObject *obj, long *out, Py_ssize_t maxlen);
-Py_ssize_t load_seq_as_ulong(PyObject *obj, unsigned long *uout,
-                             Py_ssize_t maxlen, const char *errmsg = 0);
+Py_ssize_t load_index_seq_as_long(PyObject *obj, long *out, Py_ssize_t maxlen);
+Py_ssize_t load_index_seq_as_ulong(PyObject *obj, unsigned long *uout,
+                                   Py_ssize_t maxlen, const char *errmsg = 0);
 
 inline size_t calc_size(int ndim, const size_t *shape)
 {

@@ -45,7 +45,7 @@ PyObject *filled_pyargs(PyObject *args, int value)
         return 0;
 
     size_t shape[max_ndim];
-    Py_ssize_t ndim = load_seq_as_ulong(
+    Py_ssize_t ndim = load_index_seq_as_ulong(
         pyshape, shape, max_ndim, "Negative dimensions are not allowed.");
     if (ndim == -1) return 0;
 
