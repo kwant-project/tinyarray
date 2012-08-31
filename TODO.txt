@@ -1,4 +1,8 @@
-* Add missing arithmetic operations.
+* Implement missing arithmetic operations.
+
+* Implement missing comparisons.
+
+* Implement creation of arrays from objects supporting the buffer protocol.
 
 * 0-d arrays should not be sequences.  Currently there are problems with using
   0-d arrays with PySequence_Fast.

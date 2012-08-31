@@ -147,11 +147,27 @@ def test_iteration():
                 assert_equal(np.array(ta.array(tuple(t))), np.array(t))
 
 
-def test_hash():
+def test_as_dict_key():
     n = 100
-    for dtype in dtypes:
-        s = set(hash(ta.array(range(i), dtype)) for i in range(n))
-        assert_equal(len(s), n)
+    d = {}
+    for dtype in dtypes + dtypes:
+        for i in xrange(n):
+            d[ta.array(xrange(i), dtype)] = i
+        assert_equal(len(d), n)
+    for i in xrange(n):
+        assert_equal(d[tuple(xrange(i))], i)
+
+
+def test_hash_equality():
+    for tup in [0, -1, -1.0, -1 + 0j, -0.3, 1.7, 0.4j,
+                -12.3j, 1 - 12.3j, 1.3 - 12.3j,
+                (), (-1,), (2,),
+                (0, 0), (-1, -1), (-5, 7), (3, -1, 0),
+                ((0, 0), (0, 0)), (((-1,),),)]:
+        arr = ta.array(tup)
+        assert arr == tup
+        assert not (arr != tup)
+        assert hash(arr) == hash(tup)
 
 
 def test_broadcasting():
