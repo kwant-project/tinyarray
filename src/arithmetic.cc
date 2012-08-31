@@ -124,50 +124,17 @@ typedef PyObject *Binary_ufunc(int, const size_t*,
 PyObject *apply_binary_ufunc(Binary_ufunc **ufunc_dtable,
                              PyObject *a, PyObject *b)
 {
-    Dtype dtype_a = get_dtype(a), dtype_b = get_dtype(b), dtype;
-
-    // Make sure a and b are tinyarrays.
-    if (dtype_a != Dtype::NONE) {
-        Py_INCREF(a);
-    } else {
-        a = array_from_arraylike(a, &dtype_a);
-        if (!a) return 0;
-    }
-    if (dtype_b != Dtype::NONE) {
-        Py_INCREF(b);
-    } else {
-        b = array_from_arraylike(b, &dtype_b, dtype_a);
-        if (!b) {
-            Py_DECREF(a);
-            return 0;
-        }
-    }
-
-    PyObject *result = 0;
-
-    // Promote to a common dtype.
-    dtype = Dtype(std::max(int(dtype_a), int(dtype_b)));
-    if (dtype_a != dtype) {
-        PyObject *temp = promote_array(dtype, a, dtype_a);
-        if (temp == 0) goto end;
-        Py_DECREF(a);
-        a = temp;
-    } else if (dtype_b != dtype) {
-        PyObject *temp = promote_array(dtype, b, dtype_b);
-        if (temp == 0) goto end;
-        Py_DECREF(b);
-        b = temp;
-    }
+    Dtype dtype;
+    if (coerce_to_arrays(&a, &b, &dtype) < 0) return 0;
 
     int ndim_a, ndim_b;
     size_t *shape_a, *shape_b;
     reinterpret_cast<Array_base*>(a)->ndim_shape(&ndim_a, &shape_a);
     reinterpret_cast<Array_base*>(b)->ndim_shape(&ndim_b, &shape_b);
 
-    int ndim;
-    size_t stride_a, stride_b, shape[max_ndim];;
-    ndim = std::max(ndim_a, ndim_b);
-    stride_a = stride_b = 1;
+    PyObject *result = 0;
+    int ndim = std::max(ndim_a, ndim_b);
+    size_t stride_a = 1, stride_b = 1, shape[max_ndim];;
     ptrdiff_t hops_a[max_ndim], hops_b[max_ndim];
     for (int d = ndim - 1, d_a = ndim_a - 1, d_b = ndim_b - 1;
          d >= 0; --d, --d_a, --d_b) {
@@ -409,24 +376,8 @@ bool Divide<long>::operator()(long &result, long x, long y)
 
 PyObject *dot_product(PyObject *a, PyObject *b)
 {
-    Dtype dtype_a = get_dtype(a), dtype_b = get_dtype(b);
-
-    // Make sure a and b are tinyarrays.
-    if (dtype_a != Dtype::NONE) {
-        Py_INCREF(a);
-    } else {
-        a = array_from_arraylike(a, &dtype_a);
-        if (!a) return 0;
-    }
-    if (dtype_b != Dtype::NONE) {
-        Py_INCREF(b);
-    } else {
-        b = array_from_arraylike(b, &dtype_b);
-        if (!b) {
-            Py_DECREF(a);
-            return 0;
-        }
-    }
+    Dtype dtype;
+    if (coerce_to_arrays(&a, &b, &dtype) < 0) return 0;
 
     PyObject *result = 0;
     int ndim_a, ndim_b;
@@ -437,16 +388,11 @@ PyObject *dot_product(PyObject *a, PyObject *b)
                         "dot does not support zero-dimensional arrays yet.");
         goto end;
     }
-    if (dtype_a != dtype_b) {
-        PyErr_SetString(PyExc_ValueError,
-                        "Dtype must be the same for now.");
-        goto end;
-    }
 
     if (ndim_a == 1 && ndim_b == 1)
-        result = array_scalar_product_dtable[int(dtype_a)](a, b);
+        result = array_scalar_product_dtable[int(dtype)](a, b);
     else
-        result = array_matrix_product_dtable[int(dtype_a)](a, b);
+        result = array_matrix_product_dtable[int(dtype)](a, b);
 
 end:
     Py_DECREF(a);

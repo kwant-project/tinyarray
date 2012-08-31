@@ -95,10 +95,7 @@ inline Dtype get_dtype(PyObject *obj)
 PyObject *array_from_arraylike(PyObject *src, Dtype *dtype,
                                Dtype min_dtype = Dtype(0));
 
-template<typename O, typename I>
-Array<O> *promote_array(Array<I> *in);
-
-PyObject *promote_array(Dtype out_dtype, PyObject *in,
-                        Dtype in_dtype = Dtype::NONE);
+// Coerced_dtype will contain the common dtype of the coerced arrays.
+int coerce_to_arrays(PyObject **a, PyObject **b, Dtype *coerced_dtype);
 
 #endif // !ARRAY_HH

@@ -40,6 +40,39 @@ Dtype dtype_of_scalar(PyObject *obj)
     return Dtype::NONE;
 }
 
+template<typename O, typename I>
+Array<O> *promote_array(Array<I> *in)
+{
+    int ndim;
+    size_t *shape, size;
+    in->ndim_shape(&ndim, &shape);
+    Array<O> *out = Array<O>::make(ndim, shape, &size);
+    if (!out) return 0;
+    I *src = in->data();
+    O *dest = out->data();
+    for (size_t i = 0; i < size; ++i) dest[i] = src[i];
+    return out;
+}
+
+PyObject *promote_array(Dtype out_dtype, PyObject *in, Dtype in_dtype)
+{
+    if (in_dtype == Dtype::NONE)
+        in_dtype = get_dtype(in);
+    assert(get_dtype(in) == get_dtype(in));
+    if (out_dtype == Dtype::DOUBLE) {
+        assert(in_dtype == Dtype::LONG);
+        return (PyObject*)promote_array<double>((Array<long>*)in);
+    } else {
+        assert(out_dtype == Dtype::COMPLEX);
+        if (in_dtype == Dtype::LONG) {
+            return (PyObject*)promote_array<Complex>((Array<long>*)in);
+        } else {
+            assert(in_dtype == Dtype::DOUBLE);
+            return (PyObject*)promote_array<Complex>((Array<double>*)in);
+        }
+    }
+}
+
 const char *seq_err_msg =
     "A sequence does not support sequence protocol - "
     "this is probably due to a bug in numpy for 0-d arrays.";
@@ -837,37 +870,50 @@ PyObject *array_from_arraylike(PyObject *src, Dtype *dtype, Dtype min_dtype)
     }
 }
 
-template<typename O, typename I>
-Array<O> *promote_array(Array<I> *in)
+int coerce_to_arrays(PyObject **a_, PyObject **b_, Dtype *coerced_dtype)
 {
-    int ndim;
-    size_t *shape, size;
-    in->ndim_shape(&ndim, &shape);
-    Array<O> *out = Array<O>::make(ndim, shape, &size);
-    if (!out) return 0;
-    I *src = in->data();
-    O *dest = out->data();
-    for (size_t i = 0; i < size; ++i) dest[i] = src[i];
-    return out;
-}
+    PyObject *a = *a_, *b = *b_;
+    Dtype dtype_a = get_dtype(a), dtype_b = get_dtype(b), dtype;
 
-PyObject *promote_array(Dtype out_dtype, PyObject *in, Dtype in_dtype)
-{
-    if (in_dtype == Dtype::NONE)
-        in_dtype = get_dtype(in);
-    assert(get_dtype(in) == get_dtype(in));
-    if (out_dtype == Dtype::DOUBLE) {
-        assert(in_dtype == Dtype::LONG);
-        return (PyObject*)promote_array<double>((Array<long>*)in);
+    // Make sure a and b are tinyarrays.
+    if (dtype_a != Dtype::NONE) {
+        Py_INCREF(a);
     } else {
-        assert(out_dtype == Dtype::COMPLEX);
-        if (in_dtype == Dtype::LONG) {
-            return (PyObject*)promote_array<Complex>((Array<long>*)in);
-        } else {
-            assert(in_dtype == Dtype::DOUBLE);
-            return (PyObject*)promote_array<Complex>((Array<double>*)in);
+        a = array_from_arraylike(a, &dtype_a);
+        if (!a) return -1;
+    }
+    if (dtype_b != Dtype::NONE) {
+        Py_INCREF(b);
+    } else {
+        b = array_from_arraylike(b, &dtype_b, dtype_a);
+        if (!b) {
+            Py_DECREF(a);
+            return -1;
         }
     }
+
+    // Promote to a common dtype.
+    dtype = Dtype(std::max(int(dtype_a), int(dtype_b)));
+    if (dtype_a != dtype) {
+        PyObject *temp = promote_array(dtype, a, dtype_a);
+        if (temp == 0) goto fail;
+        Py_DECREF(a);
+        a = temp;
+    } else if (dtype_b != dtype) {
+        PyObject *temp = promote_array(dtype, b, dtype_b);
+        if (temp == 0) goto fail;
+        Py_DECREF(b);
+        b = temp;
+    }
+
+    // Success
+    *a_ = a; *b_ = b; *coerced_dtype = dtype;
+    return 0;
+
+fail:
+    Py_DECREF(a);
+    Py_DECREF(b);
+    return -1;
 }
 
 template <typename T>
