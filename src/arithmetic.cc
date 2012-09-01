@@ -1,7 +1,6 @@
 #include <Python.h>
 #include <limits>
 #include <cmath>
-#include <cstddef>
 #include <sstream>
 #include <functional>
 #include <algorithm>
@@ -117,10 +116,6 @@ PyObject *array_matrix_product(PyObject *a_, PyObject *b_)
 PyObject *(*array_matrix_product_dtable[])(PyObject*, PyObject*) =
     DTYPE_DISPATCH(array_matrix_product);
 
-typedef PyObject *Binary_ufunc(int, const size_t*,
-                               PyObject*, const ptrdiff_t*,
-                               PyObject*, const ptrdiff_t*);
-
 PyObject *apply_binary_ufunc(Binary_ufunc **ufunc_dtable,
                              PyObject *a, PyObject *b)
 {
@@ -186,16 +181,7 @@ end:
     return result;
 }
 
-template <template <typename> class Op>
-struct Binary_op {
-    template <typename T>
-    static PyObject *ufunc(int ndim, const size_t *shape,
-                           PyObject *a_, const ptrdiff_t *hops_a,
-                           PyObject *b_, const ptrdiff_t *hops_b);
-
-    static PyObject *apply(PyObject *a, PyObject *b);
-    static Binary_ufunc *dtable[];
-};
+} // Anonymous namespace
 
 template <template <typename> class Op>
 template <typename T>
@@ -371,8 +357,6 @@ bool Divide<long>::operator()(long &result, long x, long y)
     Floor_divide<long> floor_divide;
     return floor_divide(result, x, y);
 }
-
-} // Anonymous namespace
 
 PyObject *dot_product(PyObject *a, PyObject *b)
 {

@@ -109,9 +109,16 @@ PyObject *array(PyObject *, PyObject *args)
 PyObject *dot(PyObject *, PyObject *args)
 {
     PyObject *a, *b;
-    if (!PyArg_ParseTuple(args, "OO", &a, &b))
-        return 0;
+    if (!PyArg_ParseTuple(args, "OO", &a, &b)) return 0;
     return dot_product(a, b);
+}
+
+template <template <typename> class Op>
+PyObject *ufunc(PyObject *, PyObject *args)
+{
+    PyObject *a, *b;
+    if (!PyArg_ParseTuple(args, "OO", &a, &b)) return 0;
+    return Binary_op<Op>::apply(a, b);
 }
 
 } // Anonymous namespace
@@ -122,5 +129,11 @@ PyMethodDef functions[] = {
     {"identity", identity, METH_VARARGS},
     {"array", array, METH_VARARGS},
     {"dot", dot, METH_VARARGS},
+    {"add", ufunc<Add>, METH_VARARGS},
+    {"subtract", ufunc<Subtract>, METH_VARARGS},
+    {"multiply", ufunc<Multiply>, METH_VARARGS},
+    {"divide", ufunc<Divide>, METH_VARARGS},
+    {"remainder", ufunc<Remainder>, METH_VARARGS},
+    {"floor_divide", ufunc<Remainder>, METH_VARARGS},
     {0, 0, 0, 0}                // Sentinel
 };

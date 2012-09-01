@@ -200,3 +200,22 @@ def test_binary_operators():
                     assert_equal(
                         op(ta.array(a.tolist()), ta.array(b.tolist())),
                         op(a, b))
+
+
+def test_binary_ufuncs():
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+        for name in ["add", "subtract", "multiply", "divide",
+                     "remainder", "floor_divide"]:
+            np_func = np.__dict__[name]
+            ta_func = ta.__dict__[name]
+            for dtype in dtypes:
+                for shape in [(), 1, 3]:
+                    if dtype is complex and \
+                            name in ["remainder", "floor_divide"]:
+                        continue
+                    a = make(shape, dtype)
+                    b = make(shape, dtype)
+                    assert_equal(ta_func(a.tolist(), b.tolist()),
+                                 np_func(a, b))
