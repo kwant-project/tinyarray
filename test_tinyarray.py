@@ -6,6 +6,9 @@ from numpy.testing import assert_equal, assert_almost_equal
 
 dtypes = [int, float, complex]
 
+some_shapes = [(), 0, 1, 2, 3,
+               (0, 0), (1, 0), (0, 1), (2, 2), (17, 17),
+               (0, 0, 0), (1, 1, 1), (2, 2, 1), (2, 0, 3)]
 
 def make(shape, dtype):
     result = np.arange(np.prod(shape), dtype=int)
@@ -28,9 +31,7 @@ def shape_of_seq(seq, r=()):
 
 def test_array():
     for dtype in dtypes:
-        for a_shape in [(), 0, 1, 2, 3,
-                        (0, 0), (1, 0), (0, 1), (2, 2), (17, 17),
-                        (0, 0, 0), (1, 1, 1), (2, 2, 1), (2, 0, 3)]:
+        for a_shape in some_shapes:
             a = make(a_shape, dtype)
 
             l = a.tolist()
@@ -72,9 +73,10 @@ def test_array():
 
 def test_special_constructors():
     for dtype in dtypes:
+        for shape in some_shapes:
+            assert_equal(ta.zeros(shape, dtype), np.zeros(shape, dtype))
+            assert_equal(ta.ones(shape, dtype), np.ones(shape, dtype))
         for n in [0, 1, 2, 3, 17]:
-            assert_equal(ta.zeros(n, dtype), np.zeros(n, dtype))
-            assert_equal(ta.ones(n, dtype), np.ones(n, dtype))
             assert_equal(ta.identity(n, dtype), np.identity(n, dtype))
 
 
@@ -101,7 +103,7 @@ def test_dot():
 
         # We have to use almost_equal here because the result of numpy's dot
         # does not always agree to the last bit with a naive implementation.
-        # (This is probably due to usage of SSE or parallelization.)
+        # (This is probably due to their usage of SSE or parallelization.)
         #
         # On my machine in summer 2012 with Python 2.7 and 3.2 the program
         #
@@ -138,13 +140,10 @@ def test_dot():
 def test_iteration():
     for dtype in dtypes:
         assert_raises(TypeError, tuple, ta.array(1, dtype))
-        for i in [0, 1, 2, 3, 15]:
-            t = tuple(xrange(i))
-            assert_equal(tuple(ta.array(t, dtype)), t)
-
-            if i != 0:
-                t = ta.identity(i, dtype)
-                assert_equal(np.array(ta.array(tuple(t))), np.array(t))
+        for shape in [0, 1, 2, 3, (1, 0), (2, 2), (17, 17),
+                      (1, 1, 1), (2, 2, 1), (2, 0, 3)]:
+            a = make(shape, dtype)
+            assert_equal(tuple(a), a)
 
 
 def test_as_dict_key():
