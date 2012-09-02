@@ -135,13 +135,9 @@ PyObject *unary_ufunc(PyObject *, PyObject *args)
 
     PyObject *a;
     if (!PyArg_ParseTuple(args, "O", &a)) return 0;
-    Dtype dtype = get_dtype(a);
-    if (dtype != Dtype::NONE) {
-        Py_INCREF(a);
-    } else {
-        a = array_from_arraylike(a, &dtype);
-        if (!a) return 0;
-    }
+    Dtype dtype = Dtype::NONE;
+    a = array_from_arraylike(a, &dtype);
+    if (!a) return 0;
     PyObject *result = operation_dtable[int(dtype)](a);
     Py_DECREF(a);
     return result;

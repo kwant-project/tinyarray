@@ -71,6 +71,21 @@ def test_array():
         assert_raises(ValueError, ta.array, [[0, 0], [[0], [0]]], dtype)
 
 
+def test_conversion():
+    for src_dtype in dtypes:
+        for dest_dtype in dtypes:
+            src = ta.zeros(3, src_dtype)
+            tsrc = tuple(src)
+            impossible = src_dtype is complex and dest_dtype in [int, float]
+            for s in [src, tsrc]:
+                if impossible:
+                    assert_raises(TypeError, ta.array, s, dest_dtype)
+                else:
+                    dest = ta.array(s, dest_dtype)
+                    assert isinstance(dest[0], dest_dtype)
+                    assert_equal(src, dest)
+
+
 def test_special_constructors():
     for dtype in dtypes:
         for shape in some_shapes:
