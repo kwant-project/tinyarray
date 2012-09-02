@@ -155,11 +155,36 @@ PyObject *unary_ufunc(PyObject *, PyObject *args)
     return result;
 }
 
+template <typename Kind>
+PyObject *unary_ufunc_round(PyObject *, PyObject *args)
+{
+    static_assert(int(Dtype::LONG) == 0 && int(Dtype::DOUBLE) == 1 &&
+                  int(Dtype::COMPLEX) == 2 && int(Dtype::NONE) == 3,
+                  "Update me.");
+    static PyObject *(*operation_dtable[])(PyObject*) = {
+        apply_unary_ufunc<Round<Kind, long> >,
+        apply_unary_ufunc<Round<Kind, double> >,
+        apply_unary_ufunc<Round<Kind, Complex> >
+    };
+
+    PyObject *a;
+    if (!PyArg_ParseTuple(args, "O", &a)) return 0;
+    Dtype dtype = Dtype::NONE;
+    a = array_from_arraylike(a, &dtype);
+    if (!a) return 0;
+    PyObject *result = operation_dtable[int(dtype)](a);
+    Py_DECREF(a);
+    return result;
+}
+
 } // Anonymous namespace
 
-template <typename T> using Round_nearest = Round<Nearest, T>;
-template <typename T> using Round_floor = Round<Floor, T>;
-template <typename T> using Round_ceil = Round<Ceil, T>;
+// TODO: once we can require gcc 4.7, use the following type aliases instead of
+// the function unary_ufunc_round which is a stopgap.
+//
+// template <typename T> using Round_nearest = Round<Nearest, T>;
+// template <typename T> using Round_floor = Round<Floor, T>;
+// template <typename T> using Round_ceil = Round<Ceil, T>;
 
 PyMethodDef functions[] = {
     {"zeros", zeros, METH_VARARGS},
@@ -180,9 +205,12 @@ PyMethodDef functions[] = {
     {"abs", unary_ufunc<Absolute>, METH_VARARGS},
     {"absolute", unary_ufunc<Absolute>, METH_VARARGS},
     {"conjugate", unary_ufunc<Conjugate>, METH_VARARGS},
-    {"round", unary_ufunc<Round_nearest>, METH_VARARGS},
-    {"floor", unary_ufunc<Round_floor>, METH_VARARGS},
-    {"ceil", unary_ufunc<Round_ceil>, METH_VARARGS},
+// {"round", unary_ufunc<Round_nearest>, METH_VARARGS},
+// {"floor", unary_ufunc<Round_floor>, METH_VARARGS},
+// {"ceil", unary_ufunc<Round_ceil>, METH_VARARGS},
+    {"round", unary_ufunc_round<Nearest>, METH_VARARGS},
+    {"floor", unary_ufunc_round<Floor>, METH_VARARGS},
+    {"ceil", unary_ufunc_round<Ceil>, METH_VARARGS},
 
     {0, 0, 0, 0}                // Sentinel
 };
