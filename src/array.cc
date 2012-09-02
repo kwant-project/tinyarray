@@ -1002,6 +1002,52 @@ fail:
 }
 
 template <typename T>
+PyObject *transpose(PyObject *in_)
+{
+    assert(Array<T>::check_exact(in_)); Array<T> *in = (Array<T>*)in_;
+
+    int ndim;
+    ptrdiff_t hops[max_ndim];
+    size_t *shape_in, shape_out[max_ndim], stride = 1;
+    in->ndim_shape(&ndim, &shape_in);
+    if (ndim == 0) {
+        Py_INCREF(in_);
+        return in_;
+    }
+    for (int id = ndim - 1, od = 0; id >= 0; --id, ++od) {
+        size_t ext = shape_in[id];
+        shape_out[od] = ext;
+        hops[od] = stride;
+        stride *= ext;
+    }
+    for (int d = 1; d < ndim; ++d) hops[d - 1] -= hops[d] * shape_out[d];
+    Array<T> *out = Array<T>::make(ndim, shape_out);
+    if (!out) return 0;
+    T *src = in->data(), *dest = out->data();
+
+    int d = 0;
+    size_t i[max_ndim];
+    --ndim;
+    i[0] = shape_out[0];
+    while (true) {
+        if (i[d]) {
+            --i[d];
+            if (d == ndim) {
+                *dest++ = *src;
+                src += hops[d];
+            } else {
+                ++d;
+                i[d] = shape_out[d];
+            }
+        } else {
+            if (d == 0) return (PyObject*)out;
+            --d;
+            src += hops[d];
+        }
+    }
+}
+
+template <typename T>
 Array<T> *Array<T>::make(int ndim, size_t size)
 {
     Py_ssize_t ob_size = size;
@@ -1078,6 +1124,12 @@ PyBufferProcs Array<T>::as_buffer = {
 };
 
 template <typename T>
+PyMethodDef Array<T>::methods[] = {
+    {"transpose", (PyCFunction)transpose<T>, METH_NOARGS},
+    {0, 0}                      // Sentinel
+};
+
+template <typename T>
 PyTypeObject Array<T>::pytype = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
     pyname,
@@ -1108,7 +1160,7 @@ PyTypeObject Array<T>::pytype = {
     0,                              // tp_weaklistoffset
     (getiterfunc)Array_iter<T>::make, // tp_iter
     0,                              // tp_iternext
-    0,                              // tp_methods
+    methods,                        // tp_methods
     0,                              // tp_members
     getset,                         // tp_getset
     0,                              // tp_base
@@ -1126,3 +1178,7 @@ PyTypeObject Array<T>::pytype = {
 template class Array<long>;
 template class Array<double>;
 template class Array<Complex>;
+
+template PyObject *transpose<long>(PyObject*);
+template PyObject *transpose<double>(PyObject*);
+template PyObject *transpose<Complex>(PyObject*);

@@ -53,6 +53,7 @@ def test_array():
                 assert_raises(TypeError, len, b)
             assert_equal(memoryview(b).tobytes(), memoryview(a).tobytes())
             assert_equal(np.array(b), np.array(l))
+            assert_equal(ta.transpose(l), np.transpose(l))
 
             # Here, the tinyarray is created via the buffer interface.  It's
             # possible to distinguish shape 0 from (0, 0).
@@ -207,7 +208,7 @@ def test_binary_operators():
 
         for op in [ops.add, ops.sub, ops.mul, ops.div, ops.mod, ops.floordiv]:
             for dtype in dtypes:
-                for shape in [(), 1, 3]:
+                for shape in [(), 1, 3, (3, 2)]:
                     if dtype is complex and op in [ops.mod, ops.floordiv]:
                         continue
                     a = make(shape, dtype)
@@ -226,7 +227,7 @@ def test_binary_ufuncs():
             np_func = np.__dict__[name]
             ta_func = ta.__dict__[name]
             for dtype in dtypes:
-                for shape in [(), 1, 3]:
+                for shape in [(), 1, 3, (3, 2)]:
                     if dtype is complex and \
                             name in ["remainder", "floor_divide"]:
                         continue
@@ -240,7 +241,7 @@ def test_unary_operators():
     ops = operator
     for op in [ops.neg, ops.pos, ops.abs]:
         for dtype in dtypes:
-            for shape in [(), 1, 3]:
+            for shape in [(), 1, 3, (3, 2)]:
                 a = make(shape, dtype)
                 assert_equal(op(ta.array(a.tolist())), op(a))
 
@@ -250,7 +251,7 @@ def test_unary_ufuncs():
         np_func = np.__dict__[name]
         ta_func = ta.__dict__[name]
         for dtype in dtypes:
-            for shape in [(), 1, 3]:
+            for shape in [(), 1, 3, (3, 2)]:
                 a = make(shape, dtype)
                 if dtype is complex and name in ["round", "floor", "ceil"]:
                     assert_raises(TypeError, ta_func, a.tolist())

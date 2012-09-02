@@ -61,6 +61,7 @@ public:
 private:
     T ob_item[1];
 
+    static PyMethodDef methods[];
     static PySequenceMethods as_sequence;
     static PyMappingMethods as_mapping;
     static PyBufferProcs as_buffer;
@@ -97,5 +98,7 @@ PyObject *array_from_arraylike(PyObject *src, Dtype *dtype,
 
 // Coerced_dtype will contain the common dtype of the coerced arrays.
 int coerce_to_arrays(PyObject **a, PyObject **b, Dtype *coerced_dtype);
+
+template <typename T> PyObject *transpose(PyObject *in);
 
 #endif // !ARRAY_HH
