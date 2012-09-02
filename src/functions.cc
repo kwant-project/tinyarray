@@ -179,6 +179,7 @@ PyMethodDef functions[] = {
     {"negative", unary_ufunc<Negative>, METH_VARARGS},
     {"abs", unary_ufunc<Absolute>, METH_VARARGS},
     {"absolute", unary_ufunc<Absolute>, METH_VARARGS},
+    {"conjugate", unary_ufunc<Conjugate>, METH_VARARGS},
     {"round", unary_ufunc<Round_nearest>, METH_VARARGS},
     {"floor", unary_ufunc<Round_floor>, METH_VARARGS},
     {"ceil", unary_ufunc<Round_ceil>, METH_VARARGS},

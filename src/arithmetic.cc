@@ -449,6 +449,22 @@ struct Absolute<Complex> {
     double operator()(Complex x) { return std::abs(x); }
 };
 
+template <typename T>
+struct Conjugate {
+    typedef T Type;
+    static constexpr const char *error = 0;
+    static const bool unchanged = true;
+    T operator()(T x) { return x; }
+};
+
+template <>
+struct Conjugate<Complex> {
+    typedef Complex Type;
+    static constexpr const char *error = 0;
+    static const bool unchanged = false;
+    Complex operator()(Complex x) { return std::conj(x); }
+};
+
 // Integers are not changed by any kind of rounding.
 template <typename Kind>
 struct Round<Kind, long> {
@@ -534,12 +550,18 @@ template PyNumberMethods Array<long>::as_number;
 template PyNumberMethods Array<double>::as_number;
 template PyNumberMethods Array<Complex>::as_number;
 
+template PyObject *apply_unary_ufunc<Conjugate<long>>(PyObject*);
+template PyObject *apply_unary_ufunc<Conjugate<double>>(PyObject*);
+template PyObject *apply_unary_ufunc<Conjugate<Complex>>(PyObject*);
+
 template PyObject *apply_unary_ufunc<Round<Nearest, long>>(PyObject*);
 template PyObject *apply_unary_ufunc<Round<Nearest, double>>(PyObject*);
 template PyObject *apply_unary_ufunc<Round<Nearest, Complex>>(PyObject*);
+
 template PyObject *apply_unary_ufunc<Round<Floor, long>>(PyObject*);
 template PyObject *apply_unary_ufunc<Round<Floor, double>>(PyObject*);
 template PyObject *apply_unary_ufunc<Round<Floor, Complex>>(PyObject*);
+
 template PyObject *apply_unary_ufunc<Round<Ceil, long>>(PyObject*);
 template PyObject *apply_unary_ufunc<Round<Ceil, double>>(PyObject*);
 template PyObject *apply_unary_ufunc<Round<Ceil, Complex>>(PyObject*);

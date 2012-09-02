@@ -37,6 +37,7 @@ template <typename Op> PyObject *apply_unary_ufunc(PyObject *a);
 template <typename T> struct Negative;
 template <typename T> struct Positive;
 template <typename T> struct Absolute;
+template <typename T> struct Conjugate;
 template <typename Kind, typename T> struct Round;
 
 // Kinds of rounding, to be used with Round.

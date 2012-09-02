@@ -3,6 +3,7 @@
 #include <sstream>
 #include <limits>
 #include "array.hh"
+#include "arithmetic.hh"
 #include "functions.hh"
 #include "conversion.hh"
 
@@ -1126,6 +1127,7 @@ PyBufferProcs Array<T>::as_buffer = {
 template <typename T>
 PyMethodDef Array<T>::methods[] = {
     {"transpose", (PyCFunction)transpose<T>, METH_NOARGS},
+    {"conjugate", (PyCFunction)apply_unary_ufunc<Conjugate<T> >, METH_NOARGS},
     {0, 0}                      // Sentinel
 };
 

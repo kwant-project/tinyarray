@@ -247,7 +247,8 @@ def test_unary_operators():
 
 
 def test_unary_ufuncs():
-    for name in ["negative", "abs", "absolute", "round", "floor", "ceil"]:
+    for name in ["negative", "abs", "absolute", "round", "floor", "ceil",
+                 "conjugate"]:
         np_func = np.__dict__[name]
         ta_func = ta.__dict__[name]
         for dtype in dtypes:
