@@ -219,3 +219,25 @@ def test_binary_ufuncs():
                     b = make(shape, dtype)
                     assert_equal(ta_func(a.tolist(), b.tolist()),
                                  np_func(a, b))
+
+
+def test_unary_operators():
+    ops = operator
+    for op in [ops.neg, ops.pos, ops.abs]:
+        for dtype in dtypes:
+            for shape in [(), 1, 3]:
+                a = make(shape, dtype)
+                assert_equal(op(ta.array(a.tolist())), op(a))
+
+
+def test_unary_ufuncs():
+    for name in ["negative", "abs", "absolute", "round", "floor", "ceil"]:
+        np_func = np.__dict__[name]
+        ta_func = ta.__dict__[name]
+        for dtype in dtypes:
+            for shape in [(), 1, 3]:
+                a = make(shape, dtype)
+                if dtype is complex and name in ["round", "floor", "ceil"]:
+                    assert_raises(TypeError, ta_func, a.tolist())
+                else:
+                    assert_equal(ta_func(a.tolist()), np_func(a))

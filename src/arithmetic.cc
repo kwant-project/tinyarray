@@ -384,6 +384,105 @@ end:
     return result;
 }
 
+template <typename Op>
+PyObject *apply_unary_ufunc(PyObject *a_)
+{
+    typedef typename Op::Type T;
+    Op operation;
+    typedef decltype(operation(T())) R; // Return type
+
+    if (Op::error) {
+        PyErr_SetString(PyExc_TypeError, Op::error);
+        return 0;
+    }
+
+    assert(Array<T>::check_exact(a_)); Array<T> *a = (Array<T>*)a_;
+    int ndim;
+    size_t *shape;
+    a->ndim_shape(&ndim, &shape);
+    if (ndim == 0)
+        return (PyObject*)pyobject_from_number(operation(*a->data()));
+
+    if (Op::unchanged) {
+        Py_INCREF(a_);
+        return a_;
+    }
+
+    size_t size;
+    Array<R> *result = Array<R>::make(ndim, shape, &size);
+    if (result == 0) return 0;
+    T *src = a->data();
+    R *dest = result->data();
+    for (size_t i = 0; i < size; ++i) dest[i] = operation(src[i]);
+    return (PyObject*)result;
+}
+
+template <typename T>
+struct Negative {
+    typedef T Type;
+    static constexpr const char *error = 0;
+    static const bool unchanged = false;
+    T operator()(T x) { return -x; }
+};
+
+template <typename T>
+struct Positive {
+    typedef T Type;
+    static constexpr const char *error = 0;
+    static const bool unchanged = true;
+    T operator()(T x) { return x; }
+};
+
+template <typename T>
+struct Absolute {
+    typedef T Type;
+    static constexpr const char *error = 0;
+    static const bool unchanged = false;
+    T operator()(T x) { return std::abs(x); }
+};
+
+template <>
+struct Absolute<Complex> {
+    typedef Complex Type;
+    static constexpr const char *error = 0;
+    static const bool unchanged = false;
+    double operator()(Complex x) { return std::abs(x); }
+};
+
+// Integers are not changed by any kind of rounding.
+template <typename Kind>
+struct Round<Kind, long> {
+    typedef long Type;
+    static constexpr const char *error = 0;
+    static const bool unchanged = true;
+    long operator()(long x) { return x; }
+};
+
+template <typename Kind>
+struct Round<Kind, double> {
+    typedef double Type;
+    static constexpr const char *error = 0;
+    static const bool unchanged = false;
+    double operator()(double x) {
+        Kind rounding_kind;
+        return rounding_kind(x);
+    }
+};
+
+template <typename Kind>
+struct Round<Kind, Complex> {
+    typedef Complex Type;
+    static constexpr const char *error =
+        "Rounding is not defined for complex numbers.";
+    static const bool unchanged = false;
+    Complex operator()(Complex) { return 0.0/0.0; }
+};
+
+// The following types are to be used as Kind template parameter for Round.
+struct Nearest { double operator()(double x) { return std::round(x); } };
+struct Floor { double operator()(double x) { return std::floor(x); } };
+struct Ceil { double operator()(double x) { return std::ceil(x); } };
+
 template <typename T>
 PyNumberMethods Array<T>::as_number = {
     Binary_op<Add>::apply,          // nb_add
@@ -393,9 +492,9 @@ PyNumberMethods Array<T>::as_number = {
     Binary_op<Remainder>::apply,    // nb_remainder
     (binaryfunc)0,                  // nb_divmod
     (ternaryfunc)0,                 // nb_power
-    (unaryfunc)0,                   // nb_negative
-    (unaryfunc)0,                   // nb_positive
-    (unaryfunc)0,                   // nb_absolute
+    apply_unary_ufunc<Negative<T>>, // nb_negative
+    apply_unary_ufunc<Positive<T>>, // nb_positive
+    apply_unary_ufunc<Absolute<T>>, // nb_absolute
     (inquiry)0,                     // nb_nonzero
     (unaryfunc)0,                   // nb_invert
     (binaryfunc)0,                  // nb_lshift
@@ -434,3 +533,13 @@ PyNumberMethods Array<T>::as_number = {
 template PyNumberMethods Array<long>::as_number;
 template PyNumberMethods Array<double>::as_number;
 template PyNumberMethods Array<Complex>::as_number;
+
+template PyObject *apply_unary_ufunc<Round<Nearest, long>>(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Nearest, double>>(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Nearest, Complex>>(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Floor, long>>(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Floor, double>>(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Floor, Complex>>(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Ceil, long>>(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Ceil, double>>(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Ceil, Complex>>(PyObject*);

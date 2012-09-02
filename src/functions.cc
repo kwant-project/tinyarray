@@ -114,14 +114,44 @@ PyObject *dot(PyObject *, PyObject *args)
 }
 
 template <template <typename> class Op>
-PyObject *ufunc(PyObject *, PyObject *args)
+PyObject *binary_ufunc(PyObject *, PyObject *args)
 {
     PyObject *a, *b;
     if (!PyArg_ParseTuple(args, "OO", &a, &b)) return 0;
     return Binary_op<Op>::apply(a, b);
 }
 
+template <template <typename> class Op>
+PyObject *unary_ufunc(PyObject *, PyObject *args)
+{
+    static_assert(int(Dtype::LONG) == 0 && int(Dtype::DOUBLE) == 1 &&
+                  int(Dtype::COMPLEX) == 2 && int(Dtype::NONE) == 3,
+                  "Update me.");
+    static PyObject *(*operation_dtable[])(PyObject*) = {
+        apply_unary_ufunc<Op<long> >,
+        apply_unary_ufunc<Op<double> >,
+        apply_unary_ufunc<Op<Complex> >
+    };
+
+    PyObject *a;
+    if (!PyArg_ParseTuple(args, "O", &a)) return 0;
+    Dtype dtype = get_dtype(a);
+    if (dtype != Dtype::NONE) {
+        Py_INCREF(a);
+    } else {
+        a = array_from_arraylike(a, &dtype);
+        if (!a) return 0;
+    }
+    PyObject *result = operation_dtable[int(dtype)](a);
+    Py_DECREF(a);
+    return result;
+}
+
 } // Anonymous namespace
+
+template <typename T> using Round_nearest = Round<Nearest, T>;
+template <typename T> using Round_floor = Round<Floor, T>;
+template <typename T> using Round_ceil = Round<Ceil, T>;
 
 PyMethodDef functions[] = {
     {"zeros", zeros, METH_VARARGS},
@@ -129,11 +159,20 @@ PyMethodDef functions[] = {
     {"identity", identity, METH_VARARGS},
     {"array", array, METH_VARARGS},
     {"dot", dot, METH_VARARGS},
-    {"add", ufunc<Add>, METH_VARARGS},
-    {"subtract", ufunc<Subtract>, METH_VARARGS},
-    {"multiply", ufunc<Multiply>, METH_VARARGS},
-    {"divide", ufunc<Divide>, METH_VARARGS},
-    {"remainder", ufunc<Remainder>, METH_VARARGS},
-    {"floor_divide", ufunc<Remainder>, METH_VARARGS},
+
+    {"add", binary_ufunc<Add>, METH_VARARGS},
+    {"subtract", binary_ufunc<Subtract>, METH_VARARGS},
+    {"multiply", binary_ufunc<Multiply>, METH_VARARGS},
+    {"divide", binary_ufunc<Divide>, METH_VARARGS},
+    {"remainder", binary_ufunc<Remainder>, METH_VARARGS},
+    {"floor_divide", binary_ufunc<Floor_divide>, METH_VARARGS},
+
+    {"negative", unary_ufunc<Negative>, METH_VARARGS},
+    {"abs", unary_ufunc<Absolute>, METH_VARARGS},
+    {"absolute", unary_ufunc<Absolute>, METH_VARARGS},
+    {"round", unary_ufunc<Round_nearest>, METH_VARARGS},
+    {"floor", unary_ufunc<Round_floor>, METH_VARARGS},
+    {"ceil", unary_ufunc<Round_ceil>, METH_VARARGS},
+
     {0, 0, 0, 0}                // Sentinel
 };

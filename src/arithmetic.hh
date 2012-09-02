@@ -22,11 +22,27 @@ private:
     static Binary_ufunc *dtable[];
 };
 
+// Binary operations
 template <typename T> struct Add;
 template <typename T> struct Subtract;
 template <typename T> struct Multiply;
 template <typename T> struct Divide;
 template <typename T> struct Remainder;
 template <typename T> struct Floor_divide;
+
+
+template <typename Op> PyObject *apply_unary_ufunc(PyObject *a);
+
+// Unaray operations
+template <typename T> struct Negative;
+template <typename T> struct Positive;
+template <typename T> struct Absolute;
+template <typename Kind, typename T> struct Round;
+
+// Kinds of rounding, to be used with Round.
+struct Nearest;
+struct Floor;
+struct Ceil;
+
 
 #endif // !ARITHMETIC_HH
