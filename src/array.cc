@@ -912,56 +912,54 @@ Py_ssize_t load_index_seq_as_ulong(PyObject *obj, unsigned long *uout,
 // an array of the given dtype.
 PyObject *array_from_arraylike(PyObject *src, Dtype *dtype, Dtype min_dtype)
 {
-    Dtype src_dtype = get_dtype(src);
-    if (src_dtype != Dtype::NONE) {
-        // src is already an array
-        if (*dtype == Dtype::NONE)
-            *dtype = Dtype(std::max(int(src_dtype), int(min_dtype)));
-        if (*dtype == src_dtype) {
-            Py_INCREF(src);
-            return src;
-        }
-        return convert_array(*dtype, src, src_dtype);
-    }
-
+    Dtype src_dtype = get_dtype(src), dt = *dtype;
     int ndim;
     size_t shape[max_ndim];
-    PyObject *seqs[max_ndim];
-    if (*dtype == Dtype::NONE) {
+    PyObject *seqs[max_ndim], *result;
+    if (src_dtype != Dtype::NONE) {
+        // src is already an array
+        if (dt == Dtype::NONE)
+            dt = Dtype(std::max(int(src_dtype), int(min_dtype)));
+        if (dt == src_dtype)
+            Py_INCREF(result = src);
+        else
+            result = convert_array(dt, src, src_dtype);
+    } else if (dt == Dtype::NONE) {
         // No specific dtype has been requested.  It will be determined by the
         // input.
-        if (examine_arraylike(src, &ndim, shape, seqs, dtype) == -1)
+        PyObject *seqs_copy[max_ndim];
+        if (examine_arraylike(src, &ndim, shape, seqs, &dt) == -1)
             return 0;
-        if (*dtype == Dtype::NONE) {
+        for (int d = 0; d < ndim; ++d) Py_INCREF(seqs_copy[d] = seqs[d]);
+        if (dt == Dtype::NONE) {
             assert(shape[ndim - 1] == 0);
-            *dtype = default_dtype;
+            dt = default_dtype;
         }
-        if (int(*dtype) < int(min_dtype)) *dtype = min_dtype;
+        if (int(dt) < int(min_dtype)) dt = min_dtype;
         while (true) {
-            PyObject *result = make_and_readin_array_dtable[int(*dtype)](
+            result = make_and_readin_array_dtable[int(dt)](
                 src, ndim, shape, seqs, true);
-            if (result) return result;
+            if (result) break;
             PyErr_Clear();
-            *dtype = Dtype(int(*dtype) + 1);
-            if (*dtype == Dtype::NONE) {
+            dt = Dtype(int(dt) + 1);
+            if (dt == Dtype::NONE) {
                 PyErr_SetString(PyExc_TypeError, "Expecting a number.");
-                return 0;
+                result = 0;
+                break;
             }
-            // We have to re-execute examine_arraylike again to rebuild seqs
-            // which have been closed.
-#ifdef NDEBUG
-            examine_arraylike(src, &ndim, shape, seqs, 0);
-#else
-            assert(examine_arraylike(src, &ndim, shape, seqs, 0) == 0);
-#endif
+            for (int d = 0; d < ndim; ++d) Py_INCREF(seqs[d] = seqs_copy[d]);
         }
+        for (int d = 0; d < ndim; ++d) Py_DECREF(seqs_copy[d]);
     } else {
         // A specific dtype has been requested.
         if (examine_arraylike(src, &ndim, shape, seqs, 0) == -1)
-            return 0;
-        return make_and_readin_array_dtable[int(*dtype)](
-            src, ndim, shape, seqs, false);
+            result = 0;
+        else
+            result = make_and_readin_array_dtable[int(dt)](
+                src, ndim, shape, seqs, false);
     }
+    *dtype = dt;
+    return result;
 }
 
 int coerce_to_arrays(PyObject **a_, PyObject **b_, Dtype *coerced_dtype)
