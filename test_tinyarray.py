@@ -72,6 +72,18 @@ def test_array():
         assert_raises(ValueError, ta.array, [[0, 0], [[0], [0]]], dtype)
 
 
+def test_matrix():
+    for l in [(), 3, (3,), ((3,)), (1, 2), ((1, 2), (3, 4))]:
+        a = ta.matrix(l)
+        b = np.matrix(l)
+        assert_equal(a, b)
+        a = ta.matrix(ta.array(l))
+        assert_equal(a, b)
+
+    for l in [(((),),), ((3,), ()), ((1, 2), (3,))]:
+        assert_raises(ValueError, ta.matrix, l)
+
+
 def test_conversion():
     for src_dtype in dtypes:
         for dest_dtype in dtypes:

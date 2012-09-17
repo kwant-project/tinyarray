@@ -1,3 +1,5 @@
+* Fix this: ta.array(np.matrix([1,2,3]))
+
 * Implement missing arithmetic operations.
 
 * Implement missing comparisons.

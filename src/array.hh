@@ -9,6 +9,8 @@ const int max_ndim = 16;
 enum class Dtype : char {LONG = 0, DOUBLE, COMPLEX, NONE};
 const Dtype default_dtype = Dtype::DOUBLE;
 
+extern const char *dtype_names[];
+
 #define DTYPE_DISPATCH(func) {func<long>, func<double>, func<Complex>}
 
 // We use the ob_size field in a clever way to encode either the length of a
@@ -93,8 +95,10 @@ inline Dtype get_dtype(PyObject *obj)
     return Dtype::NONE;
 }
 
-PyObject *array_from_arraylike(PyObject *src, Dtype *dtype,
-                               Dtype min_dtype = Dtype(0));
+PyObject *array_from_arraylike(PyObject *in, Dtype *dtype,
+                               Dtype dtype_min = Dtype(0));
+PyObject *matrix_from_arraylike(PyObject *in, Dtype *dtype,
+                               Dtype dtype_min = Dtype(0));
 
 // Coerced_dtype will contain the common dtype of the coerced arrays.
 int coerce_to_arrays(PyObject **a, PyObject **b, Dtype *coerced_dtype);

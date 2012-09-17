@@ -106,6 +106,15 @@ PyObject *array(PyObject *, PyObject *args)
     return array_from_arraylike(src, &dtype);
 }
 
+PyObject *matrix(PyObject *, PyObject *args)
+{
+    PyObject *src;
+    Dtype dtype = Dtype::NONE;
+    if (!PyArg_ParseTuple(args, "O|O&", &src, dtype_converter, &dtype))
+        return 0;
+    return matrix_from_arraylike(src, &dtype);
+}
+
 PyObject *(*transpose_dtable[])(PyObject*) = DTYPE_DISPATCH(transpose);
 
 PyObject *transpose(PyObject *, PyObject *args)
@@ -191,6 +200,7 @@ PyMethodDef functions[] = {
     {"ones", ones, METH_VARARGS},
     {"identity", identity, METH_VARARGS},
     {"array", array, METH_VARARGS},
+    {"matrix", matrix, METH_VARARGS},
     {"transpose", transpose, METH_VARARGS},
     {"dot", dot, METH_VARARGS},
 
