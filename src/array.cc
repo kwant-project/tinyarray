@@ -462,10 +462,13 @@ int getbuffer(Array<T> *self, Py_buffer *view, int flags)
                         "Tinyarrays are not Fortran contiguous.");
         goto fail;
     }
-    if ((flags & PyBUF_WRITEABLE) == PyBUF_WRITEABLE) {
-        PyErr_SetString(PyExc_BufferError, "Tinyarrays are not writeable");
-        goto fail;
-    }
+    // The following has been commented out as a workaround for Cython's
+    // inability to deal with read-only buffers.
+    //
+    // if ((flags & PyBUF_WRITEABLE) == PyBUF_WRITEABLE) {
+    //     PyErr_SetString(PyExc_BufferError, "Tinyarrays are not writeable");
+    //     goto fail;
+    // }
 
     self->ndim_shape(&ndim, &shape);
     size = calc_size(ndim, shape);
