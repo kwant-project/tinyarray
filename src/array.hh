@@ -24,7 +24,7 @@ public:
             if (ndim) *ndim = 1;
             if (shape) *shape = (size_t*)&ob_base.ob_size;
         } else if (ob_size < -1) {
-            if (ndim) *ndim = -ob_size;
+            if (ndim) *ndim = static_cast<int>(-ob_size);
             if (shape) *shape = (size_t*)((char*)this + sizeof(Array_base));
         } else {
             if (ndim) *ndim = 0;
@@ -74,9 +74,9 @@ private:
     friend void inittinyarray();
 };
 
-Py_ssize_t load_index_seq_as_long(PyObject *obj, long *out, Py_ssize_t maxlen);
-Py_ssize_t load_index_seq_as_ulong(PyObject *obj, unsigned long *uout,
-                                   Py_ssize_t maxlen, const char *errmsg = 0);
+int load_index_seq_as_long(PyObject *obj, long *out, int maxlen);
+int load_index_seq_as_ulong(PyObject *obj, unsigned long *uout,
+                            int maxlen, const char *errmsg = 0);
 
 inline size_t calc_size(int ndim, const size_t *shape)
 {

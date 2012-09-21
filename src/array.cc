@@ -368,12 +368,12 @@ Py_ssize_t len(Array_base *self)
 Py_ssize_t index_from_key(int ndim, const size_t *shape, PyObject *key)
 {
     long indices[max_ndim];
-    Py_ssize_t res = load_index_seq_as_long(key, indices, max_ndim);
+    int res = load_index_seq_as_long(key, indices, max_ndim);
     if (res == -1) {
         PyErr_SetString(PyExc_IndexError, "Invalid index.");
         return -1;
     }
-    if (int(res) != ndim) {
+    if (res != ndim) {
         PyErr_SetString(PyExc_IndexError, "Number of indices "
                         "must be equal to number of dimensions.");
         return -1;
@@ -879,19 +879,20 @@ void inittinyarray()
     if (complex_str == 0) return;
 }
 
-Py_ssize_t load_index_seq_as_long(PyObject *obj, long *out, Py_ssize_t maxlen)
+int load_index_seq_as_long(PyObject *obj, long *out, int maxlen)
 {
     assert(maxlen >= 1);
-    Py_ssize_t len;
+    int len;
     if (PySequence_Check(obj)) {
         obj = PySequence_Fast(obj, "Bug in tinyarray, load_index_seq_as_long");
         if (!obj) return -1;
-        len = PySequence_Fast_GET_SIZE(obj);
-        if (len > maxlen) {
+        Py_ssize_t long_len = PySequence_Fast_GET_SIZE(obj);
+        if (long_len > maxlen) {
             PyErr_Format(PyExc_ValueError, "Sequence too long."
-                         " Maximum length is %ld.", maxlen);
+                         " Maximum length is %d.", maxlen);
             goto fail;
         }
+        len = static_cast<int>(long_len);
         for (PyObject **p = PySequence_Fast_ITEMS(obj), **e = p + len; p < e;
              ++p, ++out) {
             PyObject *index = PyNumber_Index(*p);
@@ -912,13 +913,13 @@ fail:
     return -1;
 }
 
-Py_ssize_t load_index_seq_as_ulong(PyObject *obj, unsigned long *uout,
-                                   Py_ssize_t maxlen, const char *errmsg)
+int load_index_seq_as_ulong(PyObject *obj, unsigned long *uout,
+                            int maxlen, const char *errmsg)
 {
     long *out = reinterpret_cast<long*>(uout);
-    Py_ssize_t len = load_index_seq_as_long(obj, out, maxlen);
+    int len = load_index_seq_as_long(obj, out, maxlen);
     if (len == -1) return -1;
-    for (Py_ssize_t i = 0; i < len; ++i)
+    for (int i = 0; i < len; ++i)
         if (out[i] < 0) {
             if (errmsg == 0)
                 errmsg = "Sequence may not contain negative values.";

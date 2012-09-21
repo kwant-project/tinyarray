@@ -24,7 +24,7 @@ int dtype_converter(const PyObject *ob, Dtype *dtype)
 }
 
 template <typename T>
-PyObject *filled(size_t ndim, const size_t *shape, int value)
+PyObject *filled(int ndim, const size_t *shape, int value)
 {
     size_t size;
     Array<T> *result = Array<T>::make(ndim, shape, &size);
@@ -34,7 +34,7 @@ PyObject *filled(size_t ndim, const size_t *shape, int value)
     return (PyObject*)result;
 }
 
-PyObject *(*filled_dtable[])(size_t, const size_t*, int) =
+PyObject *(*filled_dtable[])(int, const size_t*, int) =
     DTYPE_DISPATCH(filled);
 
 PyObject *filled_pyargs(PyObject *args, int value)
@@ -45,7 +45,7 @@ PyObject *filled_pyargs(PyObject *args, int value)
         return 0;
 
     size_t shape[max_ndim];
-    Py_ssize_t ndim = load_index_seq_as_ulong(
+    int ndim = load_index_seq_as_ulong(
         pyshape, shape, max_ndim, "Negative dimensions are not allowed.");
     if (ndim == -1) return 0;
 
