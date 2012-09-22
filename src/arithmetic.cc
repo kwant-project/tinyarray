@@ -494,9 +494,25 @@ struct Round<Kind, Complex> {
     Complex operator()(Complex) { return 0.0/0.0; }
 };
 
-// The following types are to be used as Kind template parameter for Round.
-struct Nearest { double operator()(double x) { return std::round(x); } };
+// The following three types are used as Kind template parameter for Round.
+
+struct Nearest {
+    // Rounding to nearest even, same as numpy.
+    double operator()(double x) {
+        double y = std::floor(x), r = x - y;
+        if (r > 0.5) {
+            ++y;
+        } else if (r == 0.5) {
+            r = y - 2.0 * std::floor(0.5 * y);
+            if (r == 1) ++y;
+        }
+        if (y == 0 && x < 0) y = -0.0;
+        return y;
+    }
+};
+
 struct Floor { double operator()(double x) { return std::floor(x); } };
+
 struct Ceil { double operator()(double x) { return std::ceil(x); } };
 
 template <typename T>

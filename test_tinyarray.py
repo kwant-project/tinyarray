@@ -270,3 +270,7 @@ def test_unary_ufuncs():
                     assert_raises(TypeError, ta_func, a.tolist())
                 else:
                     assert_equal(ta_func(a.tolist()), np_func(a))
+        for x in [-987654322.5, -987654321.5, -4.51, -3.51, -2.5, -2.0,
+                   -1.7, -1.5, -0.5, -0.3, -0.0, 0.0, 0.3, 0.5, 1.5, 1.7,
+                   2.0, 2.5, 3.51, 4.51, 987654321.5, 987654322.5]:
+            assert_equal(ta_func(x), np_func(x))
