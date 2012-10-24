@@ -113,6 +113,6 @@ PyObject *matrix_from_arraylike(PyObject *in, Dtype *dtype,
 // Coerced_dtype will contain the common dtype of the coerced arrays.
 int coerce_to_arrays(PyObject **a, PyObject **b, Dtype *coerced_dtype);
 
-template <typename T> PyObject *transpose(PyObject *in);
+template <typename T> PyObject *transpose(PyObject *in, PyObject *dummy);
 
 #endif // !ARRAY_HH

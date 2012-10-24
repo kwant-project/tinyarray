@@ -599,14 +599,16 @@ PyObject *to_pystring(Array<T> *self, PyObject* to_str(PyObject *),
 }
 
 template <typename T>
-PyObject *repr(Array<T> *self)
+PyObject *repr(PyObject *obj)
 {
+    Array<T> *self = reinterpret_cast<Array<T> *>(obj);
     return to_pystring(self, PyObject_Repr, "array(", ")", "      ", ",");
 }
 
 template <typename T>
-PyObject *str(Array<T> *self)
+PyObject *str(PyObject *obj)
 {
+    Array<T> *self = reinterpret_cast<Array<T> *>(obj);
     return to_pystring(self, PyObject_Str, "", "", "", "");
 }
 
@@ -661,8 +663,10 @@ out_of_range:
 }
 
 template <typename T>
-PyObject *getitem(Array<T> *self, PyObject *key)
+PyObject *getitem(PyObject *obj, PyObject *key)
 {
+    Array<T> *self = reinterpret_cast<Array<T> *>(obj);
+
     if (PySlice_Check(key)) {
         PyErr_SetString(PyExc_NotImplementedError,
                         "Slices are not implemented.");
@@ -679,10 +683,11 @@ PyObject *getitem(Array<T> *self, PyObject *key)
 }
 
 template <typename T>
-PyObject *seq_getitem(Array<T> *self, Py_ssize_t index)
+PyObject *seq_getitem(PyObject *obj, Py_ssize_t index)
 {
     int ndim;
     size_t *shape;
+    Array<T> *self = reinterpret_cast<Array<T> *>(obj);
     self->ndim_shape(&ndim, &shape);
     assert(ndim != 0);
 
@@ -710,10 +715,11 @@ PyObject *seq_getitem(Array<T> *self, Py_ssize_t index)
 }
 
 template <typename T>
-int getbuffer(Array<T> *self, Py_buffer *view, int flags)
+int getbuffer(PyObject *obj, Py_buffer *view, int flags)
 {
     int ndim;
     size_t *shape, size;
+    Array<T> *self = reinterpret_cast<Array<T> *>(obj);
 
     assert(view);
     if ((flags & PyBUF_F_CONTIGUOUS) == PyBUF_F_CONTIGUOUS) {
@@ -810,10 +816,11 @@ long hash(Complex x)
 // This routine calculates the hash of a multi-dimensional array.  The hash is
 // equal to that of an arrangement of nested tuples equivalent to the array.
 template <typename T>
-long hash(Array<T> *self)
+long hash(PyObject *obj)
 {
     int ndim;
     size_t *shape;
+    Array<T> *self = reinterpret_cast<Array<T> *>(obj);
     self->ndim_shape(&ndim, &shape);
     T *p = self->data();
     if (ndim == 0) return hash(*p);
@@ -1089,29 +1096,29 @@ PyTypeObject Array_iter<T>::pytype = {
 // The following explicit instantiations are necessary for GCC 4.6 but not for
 // GCC 4.7.  I don't know why.
 
-template PyObject *repr(Array<long>*);
-template PyObject *repr(Array<double>*);
-template PyObject *repr(Array<Complex>*);
+template PyObject *repr<long>(PyObject*);
+template PyObject *repr<double>(PyObject*);
+template PyObject *repr<Complex>(PyObject*);
 
-template PyObject *str(Array<long>*);
-template PyObject *str(Array<double>*);
-template PyObject *str(Array<Complex>*);
+template PyObject *str<long>(PyObject*);
+template PyObject *str<double>(PyObject*);
+template PyObject *str<Complex>(PyObject*);
 
-template long hash(Array<long>*);
-template long hash(Array<double>*);
-template long hash(Array<Complex>*);
+template long hash<long>(PyObject*);
+template long hash<double>(PyObject*);
+template long hash<Complex>(PyObject*);
 
-template int getbuffer(Array<long>*, Py_buffer*, int);
-template int getbuffer(Array<double>*, Py_buffer*, int);
-template int getbuffer(Array<Complex>*, Py_buffer*, int);
+template int getbuffer<long>(PyObject*, Py_buffer*, int);
+template int getbuffer<double>(PyObject*, Py_buffer*, int);
+template int getbuffer<Complex>(PyObject*, Py_buffer*, int);
 
-template PyObject *getitem(Array<long>*, PyObject*);
-template PyObject *getitem(Array<double>*, PyObject*);
-template PyObject *getitem(Array<Complex>*, PyObject*);
+template PyObject *getitem<long>(PyObject*, PyObject*);
+template PyObject *getitem<double>(PyObject*, PyObject*);
+template PyObject *getitem<Complex>(PyObject*, PyObject*);
 
-template PyObject *seq_getitem(Array<long>*, Py_ssize_t);
-template PyObject *seq_getitem(Array<double>*, Py_ssize_t);
-template PyObject *seq_getitem(Array<Complex>*, Py_ssize_t);
+template PyObject *seq_getitem<long>(PyObject*, Py_ssize_t);
+template PyObject *seq_getitem<double>(PyObject*, Py_ssize_t);
+template PyObject *seq_getitem<Complex>(PyObject*, Py_ssize_t);
 
 } // Anonymous namespace
 
@@ -1447,7 +1454,7 @@ fail:
 }
 
 template <typename T>
-PyObject *transpose(PyObject *in_)
+PyObject *transpose(PyObject *in_, PyObject *)
 {
     assert(Array<T>::check_exact(in_)); Array<T> *in = (Array<T>*)in_;
 
@@ -1490,6 +1497,12 @@ PyObject *transpose(PyObject *in_)
             src += hops[d];
         }
     }
+}
+
+template <typename T>
+PyObject *conjugate(PyObject *in_, PyObject *)
+{
+  return apply_unary_ufunc<Conjugate<T> >(in_);
 }
 
 template <typename T>
@@ -1536,7 +1549,7 @@ Array<T> *Array<T>::make(int ndim, const size_t *shape, size_t *sizep)
 }
 
 template <typename T>
-PyObject *reduce(PyObject *self_)
+PyObject *reduce(PyObject *self_, PyObject*)
 {
     assert(Array<T>::check_exact(self_)); Array<T> *self = (Array<T>*)self_;
     PyObject *result = PyTuple_New(2);
@@ -1574,13 +1587,13 @@ PySequenceMethods Array<T>::as_sequence = {
     (lenfunc)len,                // sq_length
     0,                           // sq_concat
     0,                           // sq_repeat
-    (ssizeargfunc)seq_getitem<T> // sq_item
+    seq_getitem<T> // sq_item
 };
 
 template <typename T>
 PyMappingMethods Array<T>::as_mapping = {
     (lenfunc)len,               // mp_length
-    (binaryfunc)getitem<T>      // mp_subscript
+    getitem<T>      // mp_subscript
 };
 
 template <typename T>
@@ -1590,13 +1603,13 @@ PyBufferProcs Array<T>::as_buffer = {
     0,                          // bf_getwritebuffer
     0,                          // bf_getsegcount
     0,                          // bf_getcharbuffer
-    (getbufferproc)getbuffer<T> // bf_getbuffer
+    getbuffer<T> // bf_getbuffer
 };
 
 template <typename T>
 PyMethodDef Array<T>::methods[] = {
     {"transpose", (PyCFunction)transpose<T>, METH_NOARGS},
-    {"conjugate", (PyCFunction)apply_unary_ufunc<Conjugate<T> >, METH_NOARGS},
+    {"conjugate", (PyCFunction)conjugate<T>, METH_NOARGS},
     {"__reduce__", (PyCFunction)reduce<T>, METH_NOARGS},
     {0, 0}                      // Sentinel
 };
@@ -1612,13 +1625,13 @@ PyTypeObject Array<T>::pytype = {
     0,                              // tp_getattr
     0,                              // tp_setattr
     0,                              // tp_compare
-    (reprfunc)repr<T>,              // tp_repr
+    repr<T>,                        // tp_repr
     &as_number,                     // tp_as_number
     &as_sequence,                   // tp_as_sequence
     &as_mapping,                    // tp_as_mapping
-    (hashfunc)hash<T>,              // tp_hash
+    hash<T>,                        // tp_hash
     0,                              // tp_call
-    (reprfunc)str<T>,               // tp_str
+    str<T>,                         // tp_str
     PyObject_GenericGetAttr,        // tp_getattro
     0,                              // tp_setattro
     &as_buffer,                     // tp_as_buffer
@@ -1651,10 +1664,14 @@ template class Array<long>;
 template class Array<double>;
 template class Array<Complex>;
 
-template PyObject *transpose<long>(PyObject*);
-template PyObject *transpose<double>(PyObject*);
-template PyObject *transpose<Complex>(PyObject*);
+template PyObject *transpose<long>(PyObject*, PyObject*);
+template PyObject *transpose<double>(PyObject*, PyObject*);
+template PyObject *transpose<Complex>(PyObject*, PyObject*);
 
-template PyObject *reduce<long>(PyObject*);
-template PyObject *reduce<double>(PyObject*);
-template PyObject *reduce<Complex>(PyObject*);
+template PyObject *conjugate<long>(PyObject*, PyObject*);
+template PyObject *conjugate<double>(PyObject*, PyObject*);
+template PyObject *conjugate<Complex>(PyObject*, PyObject*);
+
+template PyObject *reduce<long>(PyObject*, PyObject*);
+template PyObject *reduce<double>(PyObject*, PyObject*);
+template PyObject *reduce<Complex>(PyObject*, PyObject*);

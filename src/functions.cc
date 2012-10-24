@@ -171,7 +171,8 @@ PyObject *matrix(PyObject *, PyObject *args)
     return matrix_from_arraylike(src, &dtype);
 }
 
-PyObject *(*transpose_dtable[])(PyObject*) = DTYPE_DISPATCH(transpose);
+PyObject *(*transpose_dtable[])(PyObject*, PyObject *) =
+  DTYPE_DISPATCH(transpose);
 
 PyObject *transpose(PyObject *, PyObject *args)
 {
@@ -180,7 +181,7 @@ PyObject *transpose(PyObject *, PyObject *args)
     Dtype dtype = NONE;
     a = array_from_arraylike(a, &dtype);
     if (!a) return 0;
-    return transpose_dtable[int(dtype)](a);
+    return transpose_dtable[int(dtype)](a, 0);
 }
 
 PyObject *dot(PyObject *, PyObject *args)
