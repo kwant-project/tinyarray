@@ -1,3 +1,5 @@
+* Fix float hash on 32 bit machines
+
 * Fix this: ta.array(np.matrix([1,2,3]))
 
 * Implement missing arithmetic operations.

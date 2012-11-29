@@ -396,8 +396,8 @@ Py_ssize_t index_from_key(int ndim, const size_t *shape, PyObject *key)
 
 out_of_range:
     PyErr_Format(PyExc_IndexError, "Index %ld out of range "
-                 "(-%ld <= index < %ld) in dimension %d.",
-                 indices[d], s, s, d);
+                 "(-%lu <= index < %lu) in dimension %d.",
+                 indices[d], (unsigned long)s, (unsigned long)s, d);
     return -1;
 }
 
