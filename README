@@ -1,3 +1,22 @@
+This is tinyarray version 0.0
+=============================
+
+Copyright 2012 Commissariat à l'énergie atomique et aux énergies alternatives.
+All rights reserved.
+
+Written by Christoph Groth <christoph.groth@cea.fr>.
+
+
+License information
+-------------------
+
+This software (tinyarray) is NOT TO BE DISTRIBUTED, neither as part nor as a
+whole except with explicit permission of the author.
+
+
+Instructions
+------------
+
 tinyarray implements a subset of NumPy's functionality in a way optimized for
 small arrays, both in terms memory usage of runtime.  For small arrays,
 speedups of 3 to 35 times are measured compared to NumPy.  Unlike NumPy arrays,
