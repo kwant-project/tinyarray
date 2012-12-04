@@ -43,6 +43,40 @@ Dtype dtype_of_scalar(PyObject *obj)
     return Dtype::NONE;
 }
 
+Dtype dtype_of_buffer(Py_buffer *view)
+{
+    char *fmt = view->format;
+    Dtype dtype = Dtype::NONE;
+
+    //currently, we only understand native endianness and alignment
+    if(*fmt == '@') {
+        fmt++;
+    }
+
+    if(strchr("cbB?hHiIlL", *fmt)) {
+        dtype = Dtype::LONG;
+        fmt++;
+    }
+    else if(strchr("fdg", *fmt)) {
+        dtype = Dtype::DOUBLE;
+        fmt++;
+    }
+    else if(*fmt == 'Z') {
+        fmt++;
+        if(strchr("fdg", *fmt)) {
+            dtype = Dtype::COMPLEX;
+        }
+        fmt++;
+    }
+
+    // right now, no composite data structures are supported;
+    // if we found a single supported data type, we should be a the
+    // end of the string
+    if(*fmt != '\0') return Dtype::NONE;
+
+    return dtype;
+}
+
 template<typename O, typename I>
 PyObject *convert_array(PyObject *in_, int ndim, size_t *shape)
 {
@@ -282,6 +316,228 @@ PyObject *make_and_readin_array(PyObject *in, int ndim_in, int ndim_out,
 PyObject *(*make_and_readin_array_dtable[])(
     PyObject*, int, int, const size_t*, PyObject**, bool) =
     DTYPE_DISPATCH(make_and_readin_array);
+
+
+int examine_buffer(PyObject *in, Py_buffer *view, Dtype *dtype)
+{
+    Dtype dt = Dtype::NONE;
+
+    memset(view, 0, sizeof(Py_buffer));
+
+    if(PyObject_CheckBuffer(in)) {
+        // I don't know if the following makes much sense:
+        // I try to get the buffer using less and less demanding
+        // flags. Numpy does the same
+        if(PyObject_GetBuffer(in, view, PyBUF_ND | PyBUF_FORMAT) == 0) {
+            dt = dtype_of_buffer(view);
+        }
+        else if(PyObject_GetBuffer(in, view,
+                                   PyBUF_STRIDES | PyBUF_FORMAT) == 0) {
+            dt = dtype_of_buffer(view);
+        }
+        else if(PyObject_GetBuffer(in, view, PyBUF_FULL_RO) == 0) {
+            dt = dtype_of_buffer(view);
+        }
+
+        PyErr_Clear();
+
+        // check if the buffer can actually be converted into one of our
+        // formats
+        if(dt == Dtype::NONE) return -1;
+
+        if(dtype) *dtype = dt;
+        return 0;
+    }
+
+    return -1;
+}
+
+template<typename T>
+T (*get_buffer_converter_complex(const char *fmt))(const void *);
+
+template<>
+long (*get_buffer_converter_complex(const char *fmt))(const void *)
+{
+    // complex can only be cast to complex
+    PyErr_Format(PyExc_TypeError, "Complex cannot be cast to int.");
+
+    return 0;
+}
+
+template<>
+double (*get_buffer_converter_complex(const char *fmt))(const void *)
+{
+    // complex can only be cast to complex
+    PyErr_Format(PyExc_TypeError, "Complex cannot be cast to float.");
+
+    return 0;
+}
+
+template<>
+Complex (*get_buffer_converter_complex(const char *fmt))(const void *)
+{
+    switch(*(fmt + 1)){
+    case 'f':
+        return number_from_ptr<Complex,  std::complex<float> >;
+    case 'd':
+        return number_from_ptr<Complex, std::complex<double> >;
+    case 'g':
+        return number_from_ptr<Complex, std::complex<long double> >;
+    }
+
+    return 0;
+}
+
+template<typename T>
+T (*get_buffer_converter(Py_buffer *view))(const void *)
+{
+    // currently, we only understand native endianness and alignment
+    char *fmt = view->format;
+
+    if(*fmt == '@') {
+        fmt++;
+    }
+
+    switch(*fmt) {
+    case 'c':
+        return number_from_ptr<T, char>;
+    case 'b':
+        return number_from_ptr<T, signed char>;
+    case 'B':
+        return number_from_ptr<T, unsigned char>;
+    case '?':
+        return number_from_ptr<T, bool>;
+    case 'h':
+        return number_from_ptr<T, short>;
+    case 'H':
+        return number_from_ptr<T, unsigned short>;
+    case 'i':
+        return number_from_ptr<T, int>;
+    case 'I':
+        return number_from_ptr<T, unsigned int>;
+    case 'l':
+        return number_from_ptr<T, long>;
+    case 'L':
+        return number_from_ptr<T, unsigned long>;
+    case 'q':
+        return number_from_ptr<T, long long>;
+    case 'Q':
+        return number_from_ptr<T, unsigned long long>;
+    case 'f':
+        return number_from_ptr<T, float>;
+    case 'd':
+        return number_from_ptr<T, double>;
+    case 'g':
+        return number_from_ptr<T, long double>;
+    case 'Z':
+        return get_buffer_converter_complex<T>(fmt);
+    }
+
+    return 0;
+}
+
+template<typename T>
+int readin_buffer(T *dest, Py_buffer *view, const size_t *shape, bool exact)
+{
+    // Note: the last two arguments are not really used yet, need to figure
+    // out what they are used for in the readin_arraylike.
+    T (*number_from_ptr)(const void *) = get_buffer_converter<T>(view);
+    if(!number_from_ptr) return -1;
+
+    if(view->ndim == 0) {
+        *dest = (*number_from_ptr)(view->buf);
+
+        if(PyErr_Occurred()) return -1;
+        else return 0;
+    }
+
+    size_t indices[max_ndim];
+    for(int i=0; i<view->ndim; i++) {
+        indices[i] = 0;
+    }
+
+    if(view->suboffsets) {
+        while(indices[0] < view->shape[0]) {
+
+            char *pointer = (char*)view->buf;
+            for (int i = 0; i < view->ndim; i++) {
+                pointer += view->strides[i] * indices[i];
+                if (view->suboffsets[i] >=0 ) {
+                    pointer = *((char**)pointer) + view->suboffsets[i];
+                }
+            }
+
+            *dest++ = (*number_from_ptr)(pointer);
+            if(PyErr_Occurred()) return -1;
+
+            indices[view->ndim-1]++;
+
+            for(int i=view->ndim-1; i>0; i--) {
+                if(indices[i] < view->shape[i])
+                    break;
+                indices[i-1]++;
+                indices[i] = 0;
+            }
+        }
+    }
+    else if(view->strides) {
+        char *ptr = (char *)view->buf;
+
+        while(indices[0] < view->shape[0]) {
+            *dest++ = (*number_from_ptr)(ptr);
+            if(PyErr_Occurred()) return -1;
+
+            indices[view->ndim-1] ++;
+            ptr += view->strides[view->ndim-1];
+
+            for(int i=view->ndim-1; i>0; i--) {
+                if(indices[i] < view->shape[i])
+                    break;
+                indices[i-1]++;
+                ptr += view->strides[i-1];
+                indices[i] = 0;
+                ptr -= view->strides[i] * view->shape[i];
+            }
+        }
+    }
+    else { // must be C-contiguous
+        char *end = (char *)view->buf + view->len;
+        char *p = (char *)view->buf;
+        while(p < end) {
+            *dest++ = (*number_from_ptr)(p);
+            if(PyErr_Occurred()) return -1;
+
+            p += view->itemsize;
+        }
+    }
+
+    return 0;
+}
+
+template <typename T>
+PyObject *make_and_readin_buffer(Py_buffer *view, int ndim_out,
+                                const size_t *shape_out,
+                                bool exact)
+{
+    Array<T> *result = Array<T>::make(ndim_out, shape_out);
+    assert(ndim_out >= ndim_in);
+#ifndef NDEBUG
+    for (int d = 0, e = ndim_out - view->ndim; d < e; ++d)
+        assert(shape_out[d] == 1);
+#endif
+    if (result == 0) return 0;
+    if (readin_buffer<T>(result->data(), view,
+                         shape_out + ndim_out - view->ndim, exact)
+        == -1) {
+        Py_DECREF(result);
+        return 0;
+    }
+    return (PyObject*)result;
+}
+
+PyObject *(*make_and_readin_buffer_dtable[])(
+    Py_buffer *, int, const size_t*, bool) =
+    DTYPE_DISPATCH(make_and_readin_buffer);
 
 template <typename T>
 PyObject *to_pystring(Array<T> *self, PyObject* to_str(PyObject *),
@@ -960,41 +1216,67 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
             Py_INCREF(result = in);
         else
             result = convert_array(dt, in, dtype_in);
-    } else if (dt == Dtype::NONE) {
-        // No specific dtype has been requested.  It will be determined by the
-        // input.
-        PyObject *seqs_copy[max_ndim];
-        if (examine_arraylike(in, &ndim, shape, seqs, &dt) == -1)
-            return 0;
-        for (int d = 0; d < ndim; ++d) Py_INCREF(seqs_copy[d] = seqs[d]);
-        if (dt == Dtype::NONE) {
-            assert(shape[ndim - 1] == 0);
-            dt = default_dtype;
-        }
-        if (int(dt) < int(dtype_min)) dt = dtype_min;
-        while (true) {
-            result = make_and_readin_array_dtable[int(dt)](
-                in, ndim, ndim, shape, seqs, true);
-            if (result) break;
-            dt = Dtype(int(dt) + 1);
-            if (dt == Dtype::NONE) {
-                result = 0;
-                break;
-            }
-            PyErr_Clear();
-            for (int d = 0; d < ndim; ++d) Py_INCREF(seqs[d] = seqs_copy[d]);
-        }
-        for (int d = 0; d < ndim; ++d) Py_DECREF(seqs_copy[d]);
+
+        *dtype = dt;
+        return result;
     } else {
-        // A specific dtype has been requested.
-        if (examine_arraylike(in, &ndim, shape, seqs, 0) == -1)
-            return 0;
-        else
-            result = make_and_readin_array_dtable[int(dt)](
-                in, ndim, ndim, shape, seqs, false);
+        bool find_type = (dt == Dtype::NONE ? true : false);
+
+        // Try if buffer interface is supported
+        Py_buffer view;
+
+        if(examine_buffer(in, &view, find_type ? &dt : 0) == 0) {
+            if(find_type && int(dt) < int(dtype_min)) dt = dtype_min;
+
+            for(int i=0; i<view.ndim; i++) {
+                shape[i] = view.shape[i];
+            }
+            result = make_and_readin_buffer_dtable[int(dt)](
+                &view, view.ndim, shape, find_type);
+            PyBuffer_Release(&view);
+
+
+            *dtype = dt;
+            return result;
+        }
+
+        if (examine_arraylike(in, &ndim, shape, seqs,
+                              find_type ? &dt : 0) == 0) {
+            if(find_type) {
+                PyObject *seqs_copy[max_ndim];
+                for (int d = 0; d < ndim; ++d)
+                    Py_INCREF(seqs_copy[d] = seqs[d]);
+                if (dt == Dtype::NONE) {
+                    assert(shape[ndim - 1] == 0);
+                    dt = default_dtype;
+                }
+                if (int(dt) < int(dtype_min)) dt = dtype_min;
+                while (true) {
+                    result = make_and_readin_array_dtable[int(dt)](
+                        in, ndim, ndim, shape, seqs, true);
+                    if (result) break;
+                    dt = Dtype(int(dt) + 1);
+                    if (dt == Dtype::NONE) {
+                        result = 0;
+                        break;
+                    }
+                    PyErr_Clear();
+                    for (int d = 0; d < ndim; ++d)
+                        Py_INCREF(seqs[d] = seqs_copy[d]);
+                }
+                for (int d = 0; d < ndim; ++d) Py_DECREF(seqs_copy[d]);
+            } else {
+                // A specific dtype has been requested.
+                result = make_and_readin_array_dtable[int(dt)](
+                    in, ndim, ndim, shape, seqs, false);
+            }
+
+            *dtype = dt;
+            return result;
+        }
     }
-    *dtype = dt;
-    return result;
+
+    return 0;
 }
 
 // If *dtype == Dtype::NONE the simplest fitting dtype (at least dtype_min)
@@ -1025,51 +1307,92 @@ PyObject *matrix_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
             PyErr_SetString(PyExc_ValueError, "Matrix must be 2-dimensional.");
             result = 0;
         }
+
+        *dtype = dt;
+        return result;
     } else {
         // `in` is not an array.
-        if (examine_arraylike(in, &ndim, shape, seqs,
-                              dt == Dtype::NONE ? &dt : 0) == -1) return 0;
-        if (ndim != 2) {
-            if (ndim > 2) {
-                PyErr_SetString(PyExc_ValueError,
-                                "Matrix must be 2-dimensional.");
-                return 0;
+
+        bool find_type = (*dtype == Dtype::NONE ? true : false);
+
+        // Try if buffer interface is supported
+        Py_buffer view;
+
+        if(examine_buffer(in, &view, find_type ? &dt : 0) == 0) {
+
+            for(int i=0; i<view.ndim; i++) {
+                shape[i] = view.shape[i];
             }
-            shape[1] = (ndim == 0) ? 1 : shape[0];
-            shape[0] = 1;
-        }
-        if (*dtype == Dtype::NONE) {
-            // No specific dtype has been requested.  It will be determined by
-            // the input.
-            PyObject *seqs_copy[max_ndim];
-            for (int d = 0; d < ndim; ++d) Py_INCREF(seqs_copy[d] = seqs[d]);
-            if (dt == Dtype::NONE) {
-                assert(shape[1] == 0);
-                dt = default_dtype;
-            }
-            if (int(dt) < int(dtype_min)) dt = dtype_min;
-            while (true) {
-                result = make_and_readin_array_dtable[int(dt)](
-                    in, ndim, 2, shape, seqs, true);
-                if (result) break;
-                dt = Dtype(int(dt) + 1);
-                if (dt == Dtype::NONE) {
-                    result = 0;
-                    break;
+
+            if (view.ndim != 2) {
+                if (view.ndim > 2) {
+                    PyErr_SetString(PyExc_ValueError,
+                                    "Matrix must be 2-dimensional.");
+                    return 0;
                 }
-                PyErr_Clear();
-                for (int d = 0; d < ndim; ++d)
-                    Py_INCREF(seqs[d] = seqs_copy[d]);
+                shape[1] = (view.ndim == 0) ? 1 : shape[0];
+                shape[0] = 1;
             }
-            for (int d = 0; d < ndim; ++d) Py_DECREF(seqs_copy[d]);
-        } else {
-            // A specific dtype has been requested.
-            result = make_and_readin_array_dtable[int(dt)](
-                in, ndim, 2, shape, seqs, false);
+
+            if(find_type && int(dt) < int(dtype_min)) dt = dtype_min;
+
+            result = make_and_readin_buffer_dtable[int(dt)](
+                &view, view.ndim, shape, find_type);
+            PyBuffer_Release(&view);
+
+
+            *dtype = dt;
+            return result;
+        }
+
+        if (examine_arraylike(in, &ndim, shape, seqs,
+                               find_type ? &dt : 0) == 0) {
+            if (ndim != 2) {
+                if (ndim > 2) {
+                    PyErr_SetString(PyExc_ValueError,
+                                    "Matrix must be 2-dimensional.");
+                    return 0;
+                }
+                shape[1] = (ndim == 0) ? 1 : shape[0];
+                shape[0] = 1;
+            }
+            if (find_type) {
+                // No specific dtype has been requested.  It will be
+                // determined by the input.
+                PyObject *seqs_copy[max_ndim];
+                for (int d = 0; d < ndim; ++d)
+                    Py_INCREF(seqs_copy[d] = seqs[d]);
+                if (dt == Dtype::NONE) {
+                    assert(shape[1] == 0);
+                    dt = default_dtype;
+                }
+                if (int(dt) < int(dtype_min)) dt = dtype_min;
+                while (true) {
+                    result = make_and_readin_array_dtable[int(dt)](
+                        in, ndim, 2, shape, seqs, true);
+                    if (result) break;
+                    dt = Dtype(int(dt) + 1);
+                    if (dt == Dtype::NONE) {
+                        result = 0;
+                        break;
+                    }
+                    PyErr_Clear();
+                    for (int d = 0; d < ndim; ++d)
+                        Py_INCREF(seqs[d] = seqs_copy[d]);
+                }
+                for (int d = 0; d < ndim; ++d) Py_DECREF(seqs_copy[d]);
+            } else {
+                // A specific dtype has been requested.
+                result = make_and_readin_array_dtable[int(dt)](
+                    in, ndim, 2, shape, seqs, false);
+            }
+
+            *dtype = dt;
+            return result;
         }
     }
-    *dtype = dt;
-    return result;
+
+    return 0;
 }
 
 int coerce_to_arrays(PyObject **a_, PyObject **b_, Dtype *coerced_dtype)

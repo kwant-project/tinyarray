@@ -3,6 +3,7 @@ import tinyarray as ta
 from nose.tools import assert_raises
 import numpy as np
 from numpy.testing import assert_equal, assert_almost_equal
+import sys
 
 dtypes = [int, float, complex]
 
@@ -34,6 +35,8 @@ def test_array():
         for a_shape in some_shapes:
             a = make(a_shape, dtype)
 
+            # creation from list
+
             l = a.tolist()
             b = ta.array(l)
             b_shape = shape_of_seq(l)
@@ -51,14 +54,36 @@ def test_array():
             else:
                 assert_equal(b.dtype, dtype)
                 assert_raises(TypeError, len, b)
-            assert_equal(memoryview(b).tobytes(), memoryview(a).tobytes())
+            assert_equal(memoryview(b).tobytes(),
+                         memoryview(a).tobytes())
             assert_equal(np.array(b), np.array(l))
             assert_equal(ta.transpose(l), np.transpose(l))
 
             # Here, the tinyarray is created via the buffer interface.  It's
             # possible to distinguish shape 0 from (0, 0).
-            # b = ta.array(a)
-            # assert_equal(np.array(b), a)
+
+            b = ta.array(a)
+
+            assert isinstance(repr(b), str)
+            assert_equal(b.ndim, len(b.shape))
+            assert_equal(b.shape, a.shape)
+            assert_equal(b.size, a.size)
+            assert_equal(b, a)
+            assert_equal(np.array(b), a)
+            if a_shape != ():
+                assert_equal(len(b), len(a))
+            else:
+                assert_raises(TypeError, len, b)
+            assert_equal(memoryview(b).tobytes(),
+                         memoryview(a).tobytes())
+            assert_equal(ta.transpose(b), np.transpose(a))
+
+            # check creation from numpy matrix
+            if not isinstance(a_shape, tuple) or len(a_shape) <= 2:
+                b = ta.array(np.matrix(a))
+
+                assert_equal(b.ndim, 2)
+                assert_equal(b, np.matrix(a))
 
         l = []
         for i in range(16):
@@ -79,6 +104,9 @@ def test_matrix():
         assert_equal(a, b)
         a = ta.matrix(ta.array(l))
         assert_equal(a, b)
+        a = ta.matrix(b)
+        assert_equal(a, b)
+
 
     for l in [(((),),), ((3,), ()), ((1, 2), (3,))]:
         assert_raises(ValueError, ta.matrix, l)
@@ -89,14 +117,25 @@ def test_conversion():
         for dest_dtype in dtypes:
             src = ta.zeros(3, src_dtype)
             tsrc = tuple(src)
+            npsrc = np.array(tsrc)
             impossible = src_dtype is complex and dest_dtype in [int, float]
-            for s in [src, tsrc]:
+            for s in [src, tsrc, npsrc]:
                 if impossible:
                     assert_raises(TypeError, ta.array, s, dest_dtype)
                 else:
                     dest = ta.array(s, dest_dtype)
                     assert isinstance(dest[0], dest_dtype)
                     assert_equal(src, dest)
+
+    # check for overflow
+    long_overflow = [1e300, np.array([1e300])]
+    # this check only works for Python 2
+    if 18446744073709551615 > sys.maxint:
+        long_overflow.extend([np.array([18446744073709551615], np.uint64),
+                              18446744073709551615])
+
+    for s in long_overflow:
+        assert_raises(OverflowError, ta.array, s, long)
 
 
 def test_special_constructors():
@@ -162,6 +201,8 @@ def test_dot():
         for sa, sb in shape_pairs:
             a = make(sa, dtype)
             b = make(sb, dtype) - 5
+            assert_raises(ValueError, ta.dot, ta.array(a.tolist()),
+                          ta.array(b.tolist()))
             assert_raises(ValueError, ta.dot, ta.array(a), ta.array(b))
 
 
@@ -203,6 +244,7 @@ def test_broadcasting():
             a = make(sa, int)
             b = make(sb, int)
             assert_equal(ta.array(a.tolist()) + ta.array(b.tolist()), a + b)
+            assert_equal(ta.array(a) + ta.array(b), a + b)
 
 
 def test_promotion():
@@ -211,6 +253,7 @@ def test_promotion():
             a = make(3, dtypea)
             b = make(3, dtypeb)
             assert_equal(ta.array(a.tolist()) + ta.array(b.tolist()), a + b)
+            assert_equal(ta.array(a) + ta.array(b), a + b)
 
 
 def test_binary_operators():
@@ -228,6 +271,7 @@ def test_binary_operators():
                     assert_equal(
                         op(ta.array(a.tolist()), ta.array(b.tolist())),
                         op(a, b))
+                    assert_equal(op(ta.array(a), ta.array(b)), op(a, b))
 
 
 def test_binary_ufuncs():
@@ -247,6 +291,7 @@ def test_binary_ufuncs():
                     b = make(shape, dtype)
                     assert_equal(ta_func(a.tolist(), b.tolist()),
                                  np_func(a, b))
+                    assert_equal(ta_func(a, b), np_func(a, b))
 
 
 def test_unary_operators():
@@ -256,6 +301,7 @@ def test_unary_operators():
             for shape in [(), 1, 3, (3, 2)]:
                 a = make(shape, dtype)
                 assert_equal(op(ta.array(a.tolist())), op(a))
+                assert_equal(op(ta.array(a)), op(a))
 
 
 def test_unary_ufuncs():
