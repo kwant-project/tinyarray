@@ -621,10 +621,14 @@ PyObject *richcompare(PyObject *a, PyObject *b, int op)
     size_t *shape_a, *shape_b;
     reinterpret_cast<Array_base*>(a)->ndim_shape(&ndim_a, &shape_a);
     reinterpret_cast<Array_base*>(b)->ndim_shape(&ndim_b, &shape_b);
-    if (ndim_a != ndim_b) goto done;
+    if (ndim_a != ndim_b) goto decref_then_done;
     for (int d = 0; d < ndim_a; ++d)
-        if (shape_a[d] != shape_b[d]) goto done;
+        if (shape_a[d] != shape_b[d]) goto decref_then_done;
     equal = is_equal_data_dtable[int(dtype)](a, b, calc_size(ndim_a, shape_a));
+
+decref_then_done:
+    Py_DECREF(a);
+    Py_DECREF(b);
 
 done:
     PyObject *result = ((op == Py_EQ) == equal) ? Py_True : Py_False;
