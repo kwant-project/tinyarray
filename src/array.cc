@@ -690,6 +690,7 @@ template <typename T>
 class Array_iter {
 public:
     static Array_iter *make(Array<T> *array);
+    static void dealloc(Array_iter<T> *self);
     static PyObject *next(Array_iter<T> *self);
     static PyObject *len(Array_iter<T> *self);
 private:
@@ -724,6 +725,15 @@ Array_iter<T> *Array_iter<T>::make(Array<T> *array)
     Py_INCREF(array);
     ret->array = array;
     return ret;
+}
+
+template <typename T>
+void Array_iter<T>::dealloc(Array_iter<T> *self)
+{
+    // We use Py_XDECREF as array is already decref'ed when the iterator gets
+    // exhausted.
+    Py_XDECREF(self->array);
+    PyObject_Del(self);
 }
 
 template <typename T>
@@ -787,34 +797,34 @@ PyMethodDef Array_iter<T>::methods[] = {
 template <typename T>
 PyTypeObject Array_iter<T>::pytype = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
-    pyname,                     // tp_name
-    sizeof(Array_iter<T>),      // tp_basicsize
-    0,                          // tp_itemsize
+    pyname,                             // tp_name
+    sizeof(Array_iter<T>),              // tp_basicsize
+    0,                                  // tp_itemsize
     // methods
-    (destructor)PyObject_Del,   // tp_dealloc
-    0,                          // tp_print
-    0,                          // tp_getattr
-    0,                          // tp_setattr
-    0,                          // tp_compare
-    0,                          // tp_repr
-    0,                          // tp_as_number
-    0,                          // tp_as_sequence
-    0,                          // tp_as_mapping
-    0,                          // tp_hash
-    0,                          // tp_call
-    0,                          // tp_str
-    PyObject_GenericGetAttr,    // tp_getattro
-    0,                          // tp_setattro
-    0,                          // tp_as_buffer
-    Py_TPFLAGS_DEFAULT,         // tp_flags
-    0,                          // tp_doc
-    0,                          // tp_traverse
-    0,                          // tp_clear
-    0,                          // tp_richcompare
-    0,                          // tp_weaklistoffset
-    PyObject_SelfIter,          // tp_iter
-    (iternextfunc)Array_iter<T>::next, // tp_iternext
-    Array_iter<T>::methods      // tp_methods
+    (destructor)Array_iter<T>::dealloc, // tp_dealloc
+    0,                                  // tp_print
+    0,                                  // tp_getattr
+    0,                                  // tp_setattr
+    0,                                  // tp_compare
+    0,                                  // tp_repr
+    0,                                  // tp_as_number
+    0,                                  // tp_as_sequence
+    0,                                  // tp_as_mapping
+    0,                                  // tp_hash
+    0,                                  // tp_call
+    0,                                  // tp_str
+    PyObject_GenericGetAttr,            // tp_getattro
+    0,                                  // tp_setattro
+    0,                                  // tp_as_buffer
+    Py_TPFLAGS_DEFAULT,                 // tp_flags
+    0,                                  // tp_doc
+    0,                                  // tp_traverse
+    0,                                  // tp_clear
+    0,                                  // tp_richcompare
+    0,                                  // tp_weaklistoffset
+    PyObject_SelfIter,                  // tp_iter
+    (iternextfunc)Array_iter<T>::next,  // tp_iternext
+    Array_iter<T>::methods              // tp_methods
 };
 
 // The following explicit instantiations are necessary for GCC 4.6 but not for
