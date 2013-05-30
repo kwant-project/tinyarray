@@ -13,3 +13,7 @@
 
 * Consider reducing the amount of templated code by having more dtype-flexible
   code.
+
+* Optimize readin_arraylike for elements that are tinyarrays
+
+* Implement concatenate
