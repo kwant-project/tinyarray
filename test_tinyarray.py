@@ -11,6 +11,7 @@ some_shapes = [(), 0, 1, 2, 3,
                (0, 0), (1, 0), (0, 1), (2, 2), (17, 17),
                (0, 0, 0), (1, 1, 1), (2, 2, 1), (2, 0, 3)]
 
+
 def make(shape, dtype):
     result = np.arange(np.prod(shape), dtype=int)
     if dtype in (float, complex):
@@ -35,8 +36,7 @@ def test_array():
         for a_shape in some_shapes:
             a = make(a_shape, dtype)
 
-            # creation from list
-
+            # Creation from list
             l = a.tolist()
             b = ta.array(l)
             b_shape = shape_of_seq(l)
@@ -61,7 +61,6 @@ def test_array():
 
             # Here, the tinyarray is created via the buffer interface.  It's
             # possible to distinguish shape 0 from (0, 0).
-
             b = ta.array(a)
 
             assert isinstance(repr(b), str)
@@ -78,7 +77,7 @@ def test_array():
                          memoryview(a).tobytes())
             assert_equal(ta.transpose(b), np.transpose(a))
 
-            # check creation from numpy matrix
+            # Check creation from NumPy matrix.
             if not isinstance(a_shape, tuple) or len(a_shape) <= 2:
                 b = ta.array(np.matrix(a))
 
@@ -127,9 +126,9 @@ def test_conversion():
                     assert isinstance(dest[0], dest_dtype)
                     assert_equal(src, dest)
 
-    # check for overflow
+    # Check for overflow.
     long_overflow = [1e300, np.array([1e300])]
-    # this check only works for Python 2
+    # This check only works for Python 2.
     if 18446744073709551615 > sys.maxint:
         long_overflow.extend([np.array([18446744073709551615], np.uint64),
                               18446744073709551615])

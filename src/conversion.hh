@@ -71,20 +71,19 @@ inline Tdest number_from_ptr(const void *data)
     return static_cast<Tdest>(*(reinterpret_cast<const Tsrc *>(data)));
 };
 
-// specializations for the cases that can fail
+// Specializations for the cases that can fail
 
 template<>
 inline long number_from_ptr<long, unsigned int>(const void *data)
 {
     const unsigned int *ptr = reinterpret_cast<const unsigned int*>(data);
 
-    if(*ptr > static_cast<unsigned int>(std::numeric_limits<long>::max())) {
-	PyErr_Format(PyExc_OverflowError,
-		     "Integer too large for long");
-	return -1;
-    }
-    else {
-	return static_cast<long>(*ptr);;
+    if (*ptr > static_cast<unsigned int>(std::numeric_limits<long>::max())) {
+        PyErr_Format(PyExc_OverflowError,
+                     "Integer too large for long");
+        return -1;
+    } else {
+        return static_cast<long>(*ptr);;
     }
 }
 
@@ -93,13 +92,12 @@ inline long number_from_ptr<long, unsigned long>(const void *data)
 {
     const unsigned long *ptr = reinterpret_cast<const unsigned long *>(data);
 
-    if(*ptr > static_cast<unsigned long>(std::numeric_limits<long>::max())) {
-	PyErr_Format(PyExc_OverflowError,
-		     "Integer too large for long");
-	return -1;
-    }
-    else {
-	return static_cast<long>(*ptr);;
+    if (*ptr > static_cast<unsigned long>(std::numeric_limits<long>::max())) {
+        PyErr_Format(PyExc_OverflowError,
+                     "Integer too large for long");
+        return -1;
+    } else {
+        return static_cast<long>(*ptr);;
     }
 }
 
@@ -108,14 +106,13 @@ inline long number_from_ptr<long, long long>(const void *data)
 {
     const long long *ptr = reinterpret_cast<const long long*>(data);
 
-    if( *ptr > std::numeric_limits<long>::max() ||
-	*ptr < std::numeric_limits<long>::min() ) {
-	PyErr_Format(PyExc_OverflowError,
-		     "Integer too large for long");
-	return -1;
-    }
-    else {
-	return static_cast<long>(*ptr);;
+    if (*ptr > std::numeric_limits<long>::max() ||
+        *ptr < std::numeric_limits<long>::min()) {
+        PyErr_Format(PyExc_OverflowError,
+                     "Integer too large for long");
+        return -1;
+    } else {
+        return static_cast<long>(*ptr);;
     }
 }
 
@@ -123,19 +120,17 @@ template<>
 inline long number_from_ptr<long, unsigned long long>(const void *data)
 {
     const unsigned long long *ptr =
-	reinterpret_cast<const unsigned long long*>(data);
+        reinterpret_cast<const unsigned long long*>(data);
 
-    if(*ptr >
+    if (*ptr >
        static_cast<unsigned long long>(std::numeric_limits<long>::max())) {
-	PyErr_Format(PyExc_OverflowError,
-		     "Integer too large for long");
-	return -1;
-    }
-    else {
-	return static_cast<long>(*ptr);;
+        PyErr_Format(PyExc_OverflowError,
+                     "Integer too large for long");
+        return -1;
+    } else {
+        return static_cast<long>(*ptr);;
     }
 }
-
 
 template<typename Tdest, typename Tsrc>
 inline Tdest _int_from_floatptr_exact(const void *data)
@@ -143,20 +138,19 @@ inline Tdest _int_from_floatptr_exact(const void *data)
     const Tsrc *ptr = reinterpret_cast<const Tsrc*>(data);
     Tdest result = static_cast<Tdest>(*ptr);
 
-    // Note: the > max and < min test are unreliable if the float
-    // obtained after rounding has less precision than necessary
-    // (which is typically the case for float and double). The
-    // two other tests are supposed to catych those problems
-    if( *ptr > std::numeric_limits<Tdest>::max() ||
-	*ptr < std::numeric_limits<Tdest>::min() ||
-        (*ptr > 0 && result < 0) || (*ptr < 0 && result > 0) ) {
-	PyErr_Format(PyExc_OverflowError,
-		     "Float too large to be represented by long");
-	return -1;
-    }
-    else
+    // Note: the > max and < min tests are unreliable if the float obtained
+    // after rounding has less precision than necessary (which is typically the
+    // case for float and double). The two other tests are supposed to catch
+    // those problems.
+    if (*ptr > std::numeric_limits<Tdest>::max() ||
+        *ptr < std::numeric_limits<Tdest>::min() ||
+        (*ptr > 0 && result < 0) || (*ptr < 0 && result > 0)) {
+        PyErr_Format(PyExc_OverflowError,
+                     "Float too large to be represented by long");
+        return -1;
+    } else
     {
-	return result;
+        return result;
     }
 }
 
