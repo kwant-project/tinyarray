@@ -33,6 +33,7 @@ PyObject *array_scalar_product(PyObject *a_, PyObject *b_)
     T *data_a = a->data(), *data_b = b->data();
     // It's important not to start with result = 0.  This leads to wrong
     // results with regard to the sign of zero as 0.0 + -0.0 is 0.0.
+    if (n == 0) return pyobject_from_number(T(0));
     assert(n > 0);
     T result = data_a[0] * data_b[0];
     for (size_t i = 1; i < n; ++i) {
@@ -88,24 +89,29 @@ PyObject *array_matrix_product(PyObject *a_, PyObject *b_)
         return 0;
     }
 
-    Array<T> *result = Array<T>::make(ndim, shape);
+    size_t size;
+    Array<T> *result = Array<T>::make(ndim, shape, &size);
     if (!result) return 0;
 
-    const T *data_a = a->data(), *data_b = b->data();
     T *dest = result->data();
-    const T *src_a = data_a;
-    for (size_t i = 0; i < a0; ++i, src_a += n) {
-        const T *src_b = data_b;
-        for (size_t j = 0; j < b0; ++j, src_b += (n - 1) * b1) {
-            for (size_t k = 0; k < b1; ++k, ++src_b) {
-                // It's important not to start with sum = 0.  This leads to
-                // wrong results with regard to the sign of zero as 0.0 + -0.0
-                // is 0.0.
-                assert(n > 0);
-                T sum = src_a[0] * src_b[0];
-                for (size_t l = 1; l < n; ++l)
-                    sum += src_a[l] * src_b[l * b1];
-                *dest++ = sum;
+    if (n == 0) {
+        for (size_t i = 0; i < size; ++i) dest[i] = 0;
+    } else {
+        assert(n > 0);
+        const T *data_a = a->data(), *data_b = b->data();
+        const T *src_a = data_a;
+        for (size_t i = 0; i < a0; ++i, src_a += n) {
+            const T *src_b = data_b;
+            for (size_t j = 0; j < b0; ++j, src_b += (n - 1) * b1) {
+                for (size_t k = 0; k < b1; ++k, ++src_b) {
+                    // It's important not to start with sum = 0.  This leads to
+                    // wrong results with regard to the sign of zero as 0.0 +
+                    // -0.0 is 0.0.
+                    T sum = src_a[0] * src_b[0];
+                    for (size_t l = 1; l < n; ++l)
+                        sum += src_a[l] * src_b[l * b1];
+                    *dest++ = sum;
+                }
             }
         }
     }

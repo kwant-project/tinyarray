@@ -41,8 +41,8 @@ def test_array():
             b = ta.array(l)
             b_shape = shape_of_seq(l)
 
-            # a_shape and b_shape are not always equal.  Example: a_shape ==
-            # (0, 0), b_shape = (0,).
+            # a_shape and b_shape are not always equal.
+            # Example: a_shape == (0, 0), b_shape = (0,).
 
             assert isinstance(repr(b), str)
             assert_equal(b.ndim, len(b_shape))
@@ -151,12 +151,10 @@ def test_dot():
     assert_equal(ta.dot([1, 2], (3, 4)), 11)
 
     for dtype in dtypes:
-        # The commented testcases can be added once there is support for
-        # creating tinyarrays via the buffer interface.
         shape_pairs = [(1, 1), (2, 2), (3, 3),
-                       # (0, 0),
-                       # (0, (0, 1)), ((0, 1), 1),
-                       # (0, (0, 2)), ((0, 2), 2),
+                       (0, 0),
+                       (0, (0, 1)), ((0, 1), 1),
+                       (0, (0, 2)), ((0, 2), 2),
                        (1, (1, 2)), ((2, 1), 1),
                        (2, (2, 1)), ((1, 2), 2),
                        (2, (2, 3)), ((3, 2), 2),
@@ -187,9 +185,7 @@ def test_dot():
             assert_almost_equal(ta.dot(ta.array(a), ta.array(b)), np.dot(a, b),
                                 13)
 
-        # The commented out testcases do not work due to a bug in numpy:
-        # PySequence_Check should return 0 for 0-d arrays.
-        shape_pairs = [#((), 2), (2, ()),
+        shape_pairs = [((), 2), (2, ()),
                        (1, 2),
                        (1, (2, 2)), ((1, 1), 2),
                        ((2, 2), (3, 2)),
