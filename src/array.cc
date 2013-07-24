@@ -1486,6 +1486,109 @@ Array<T> *Array<T>::make(int ndim, const size_t *shape, size_t *sizep)
     return result;
 }
 
+static bool little_endian()
+{
+    union {
+        uint32_t i;
+        char c[4];
+    } bint = {0x04030201};
+
+    return bint.c[0] == 1;
+}
+
+template <typename T>
+PyObject *tinyarray_reduce(PyObject *py_self)
+{
+    PyObject *py_ret, *py_state, *py_constructor, *py_mod;
+
+    assert(Array<T>::check_exact(self_)); Array<T> *self = (Array<T>*)py_self;
+
+    py_ret = PyTuple_New(3);
+    if (!py_ret) {
+        return 0;
+    }
+    py_mod = PyImport_ImportModule("tinyarray");
+    if (!py_mod) {
+        Py_DECREF(py_ret);
+        return 0;
+    }
+    py_constructor = PyObject_GetAttrString(py_mod, "_empty");
+    Py_DECREF(py_mod);
+
+    int ndim;
+    size_t *shape;
+    T *data = self->data();
+    self->ndim_shape(&ndim, &shape);
+    size_t size_in_bytes = calc_size(ndim, shape) * sizeof(T);
+
+    PyObject *py_data = PyString_FromStringAndSize((char*)data, size_in_bytes);
+    PyObject *py_dtype = get_dtype_py(py_self, NULL);
+    PyObject *py_shape = PyTuple_New(ndim);
+    for (int i=0; i < ndim; ++i)
+        PyTuple_SET_ITEM(py_shape, i, PyInt_FromSize_t(shape[i]));
+
+
+    PyTuple_SET_ITEM(py_ret, 0, py_constructor);
+    PyTuple_SET_ITEM(py_ret, 1, Py_BuildValue("(OO)", py_shape, py_dtype));
+
+    // fill in state to be passed to __setstate__
+    py_state = PyTuple_New(3);
+    if (!py_state) {
+        Py_DECREF(py_ret);
+        return 0;
+    }
+    PyTuple_SET_ITEM(py_state, 0, py_data);
+    PyTuple_SET_ITEM(py_state, 1, PyInt_FromLong(little_endian()));
+    PyTuple_SET_ITEM(py_state, 2, PyInt_FromLong(sizeof(int)));
+
+    PyTuple_SET_ITEM(py_ret, 2, py_state);
+    return py_ret;
+}
+
+template <typename T>
+PyObject *tinyarray_reduce_ex(PyObject *py_self, PyObject*)
+{
+    return tinyarray_reduce<T>(py_self);
+}
+
+template <typename T>
+PyObject *tinyarray_setstate(PyObject *py_self, PyObject *py_args)
+{
+    assert(Array<T>::check_exact(self_)); Array<T> *self = (Array<T>*)py_self;
+    T* data = 0;
+    size_t size_in_bytes;
+    Dtype dtype = get_dtype(py_self);
+    int pickle_little_endian, pickle_byte_size;
+
+    PyArg_ParseTuple(py_args, "(s#ii)",
+                    (char*)&data, &size_in_bytes,
+                    &pickle_little_endian,
+                    &pickle_byte_size);
+
+    // Check for endianness and integer size between pickling and unpickling
+    // environment.
+    if (dtype == Dtype::LONG && little_endian() != pickle_little_endian) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "Endianness of pickled TinyArray and "
+            "local machine are not identical.");
+        return 0;
+    }
+
+    if (dtype == Dtype::LONG && pickle_byte_size != sizeof(int)) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "integer size of pickled TinyArray is not the same "
+            "as the integer size of local machine.");
+        return 0;
+    }
+
+    size_t size = size_in_bytes / sizeof(T);
+    T *self_data = self->data();
+    for(size_t i = 0; i < size; ++i) self_data[i] = data[i];
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 // **************** Type object ****************
 
 template <>
@@ -1523,6 +1626,9 @@ template <typename T>
 PyMethodDef Array<T>::methods[] = {
     {"transpose", (PyCFunction)transpose<T>, METH_NOARGS},
     {"conjugate", (PyCFunction)apply_unary_ufunc<Conjugate<T> >, METH_NOARGS},
+    {"__reduce__", (PyCFunction)tinyarray_reduce<T>, METH_NOARGS},
+    {"__reduce_ex__", (PyCFunction)tinyarray_reduce_ex<T>, METH_VARARGS},
+    {"__setstate__", (PyCFunction)tinyarray_setstate<T>, METH_VARARGS},
     {0, 0}                      // Sentinel
 };
 
@@ -1579,3 +1685,15 @@ template class Array<Complex>;
 template PyObject *transpose<long>(PyObject*);
 template PyObject *transpose<double>(PyObject*);
 template PyObject *transpose<Complex>(PyObject*);
+
+template PyObject *tinyarray_reduce<long>(PyObject*);
+template PyObject *tinyarray_reduce<double>(PyObject*);
+template PyObject *tinyarray_reduce<Complex>(PyObject*);
+
+template PyObject *tinyarray_reduce_ex<long>(PyObject*, PyObject*);
+template PyObject *tinyarray_reduce_ex<double>(PyObject*, PyObject*);
+template PyObject *tinyarray_reduce_ex<Complex>(PyObject*, PyObject*);
+
+template PyObject *tinyarray_setstate<long>(PyObject*, PyObject*);
+template PyObject *tinyarray_setstate<double>(PyObject*, PyObject*);
+template PyObject *tinyarray_setstate<Complex>(PyObject*, PyObject*);

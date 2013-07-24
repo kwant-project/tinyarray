@@ -315,3 +315,24 @@ def test_unary_ufuncs():
                    -1.7, -1.5, -0.5, -0.3, -0.0, 0.0, 0.3, 0.5, 1.5, 1.7,
                    2.0, 2.5, 3.51, 4.51, 987654321.5, 987654322.5]:
             assert_equal(ta_func(x), np_func(x))
+
+
+def test_pickle():
+    try:
+        import cPickle as pickle
+    except ImportError:
+        import pickle
+    import numpy.random as nr
+
+    tests = [ta.array((100 * nr.rand(10)).astype(int)),  # 1D
+             ta.array(nr.rand(10)),
+             ta.array(nr.rand(10) + 1j * nr.rand(10)),
+             ta.array((100 * nr.rand(10, 5)).astype(int)),  # 2D
+             ta.array(nr.rand(10, 5)),
+             ta.array(nr.rand(10, 5) + 1j * nr.rand(10, 5)),
+             ta.array((100 * nr.rand(10, 5, 3)).astype(int)),  # 3D
+             ta.array(nr.rand(10, 5, 3)),
+             ta.array(nr.rand(10, 5, 3) + 1j * nr.rand(10, 5, 3))]
+
+    results = [pickle.loads(pickle.dumps(t)) for t in tests]
+    [assert_equal(t, r) for t, r in zip(tests, results)]
