@@ -91,7 +91,7 @@ PyObject *filled(int ndim, const size_t *shape, int value)
 PyObject *(*filled_dtable[])(int, const size_t*, int) =
     DTYPE_DISPATCH(filled);
 
-PyObject *filled_pyargs(PyObject *args, int value)
+PyObject *filled(PyObject *args, int value)
 {
     PyObject *pyshape;
     Dtype dtype = default_dtype;
@@ -110,12 +110,12 @@ PyObject *filled_pyargs(PyObject *args, int value)
 
 PyObject *zeros(PyObject *, PyObject *args)
 {
-    return filled_pyargs(args, 0);
+    return filled(args, 0);
 }
 
 PyObject *ones(PyObject *, PyObject *args)
 {
-    return filled_pyargs(args, 1);
+    return filled(args, 1);
 }
 
 template <typename T>
