@@ -24,15 +24,58 @@ int dtype_converter(const PyObject *ob, Dtype *dtype)
 }
 
 template <typename T>
-PyObject *unfilled(int ndim, const size_t *shape)
+PyObject *reconstruct(int ndim, const size_t *shape,
+                      const void *src_data_, unsigned size_in_bytes)
 {
-    size_t size ;
+    const T *src_data = (const T*)src_data_;
+    size_t size;
     Array<T> *result = Array<T>::make(ndim, shape, &size);
-    return result ? (PyObject*)result : 0 ;
+    if (!result) return 0;
+    if (size * sizeof(T) != size_in_bytes) {
+        PyErr_SetString(PyExc_ValueError,
+                        "Data length mismatch during tinyarray unpickling.");
+        return 0;
+    }
+    T *data = result->data();
+    for (size_t i = 0; i < size; ++i) data[i] = src_data[i];
+    return (PyObject*)result;
 }
 
-PyObject *(*unfilled_dtable[])(int, const size_t*) =
-    DTYPE_DISPATCH(unfilled);
+PyObject *(*reconstruct_dtable[])(int, const size_t*, const void*, unsigned) =
+    DTYPE_DISPATCH(reconstruct);
+
+PyObject *reconstruct(PyObject *, PyObject *args)
+{
+    PyObject *pyshape;
+    Format format;
+    const void *data;
+    unsigned size_in_bytes;
+    if (!PyArg_ParseTuple(args, "Ois#", &pyshape, &format,
+                          &data, &size_in_bytes))
+        return 0;
+
+    Dtype dtype = Dtype(0);
+    while (true) {
+        if (format_by_dtype[int(dtype)] == format) break;
+        dtype = Dtype(int(dtype) + 1);
+        if (dtype == Dtype::NONE) {
+            if (format < 0 || format > Format::UNKNOWN)
+                format = Format::UNKNOWN;
+            PyErr_Format(PyExc_TypeError, "Cannot unpickle %s.",
+                         format_names[format]);
+            return 0;
+        }
+    }
+
+    unsigned long shape_as_ulong[max_ndim];
+    int ndim = load_index_seq_as_ulong(pyshape, shape_as_ulong, max_ndim,
+                                       "Negative dimensions are not allowed.");
+    if (ndim == -1) return 0;
+
+    size_t shape[max_ndim];
+    for (int d = 0; d < ndim; ++d) shape[d] = shape_as_ulong[d];
+    return reconstruct_dtable[int(dtype)](ndim, shape, data, size_in_bytes);
+}
 
 template <typename T>
 PyObject *filled(int ndim, const size_t *shape, int value)
@@ -63,23 +106,6 @@ PyObject *filled_pyargs(PyObject *args, int value)
     size_t shape[max_ndim];
     for (int d = 0; d < ndim; ++d) shape[d] = shape_as_ulong[d];
     return filled_dtable[int(dtype)](ndim, shape, value);
-}
-
-PyObject *empty(PyObject *, PyObject *args)
-{
-    PyObject *pyshape;
-    Dtype dtype = default_dtype;
-    if (!PyArg_ParseTuple(args, "O|O&", &pyshape, dtype_converter, &dtype))
-        return 0;
-
-    unsigned long shape_as_ulong[max_ndim];
-    int ndim = load_index_seq_as_ulong(pyshape, shape_as_ulong, max_ndim,
-                                       "Negative dimensions are not allowed.");
-    if (ndim == -1) return 0;
-
-    size_t shape[max_ndim];
-    for (int d = 0; d < ndim; ++d) shape[d] = shape_as_ulong[d];
-    return unfilled_dtable[int(dtype)](ndim, shape);
 }
 
 PyObject *zeros(PyObject *, PyObject *args)
@@ -226,7 +252,7 @@ PyObject *unary_ufunc_round(PyObject *, PyObject *args)
 // template <typename T> using Round_ceil = Round<Ceil, T>;
 
 PyMethodDef functions[] = {
-    {"_empty", empty, METH_VARARGS},
+    {"_reconstruct", reconstruct, METH_VARARGS},
     {"zeros", zeros, METH_VARARGS},
     {"ones", ones, METH_VARARGS},
     {"identity", identity, METH_VARARGS},

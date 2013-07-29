@@ -16,9 +16,40 @@ const char *Array<Complex>::pyformat = "Zd";
 
 const char *dtype_names[] = {"int", "float", "complex"};
 
+const char *format_names[] = {
+    "int32 little endian", "int32 big endian",
+    "int64 little endian", "int64 big endian",
+    "float64 little endian", "float64 big endian",
+    "complex128 little endian", "complex128 big endian",
+    "unknown"};
+
+Format format_by_dtype[int(Dtype::NONE)];
+
 namespace {
 
-PyObject *int_str, *long_str, *float_str, *complex_str, *index_str;
+bool is_big_endian()
+{
+    union {
+        uint32_t i;
+        char c[4];
+    } bint = {0x0a0b0c0d};
+
+    if (bint.c[0] == 0x0a) {
+        assert(bint.c[1] == 0x0b);
+        assert(bint.c[2] == 0x0c);
+        assert(bint.c[3] == 0x0d);
+        return true;
+    } else {
+        assert(bint.c[0] == 0x0d);
+        assert(bint.c[1] == 0x0c);
+        assert(bint.c[2] == 0x0b);
+        assert(bint.c[3] == 0x0a);
+        return false;
+    }
+}
+
+PyObject *int_str, *long_str, *float_str, *complex_str, *index_str,
+    *reconstruct;
 
 Dtype dtype_of_scalar(PyObject *obj)
 {
@@ -118,7 +149,6 @@ PyObject *convert_array(Dtype dtype_out, PyObject *in, Dtype dtype_in,
     assert(get_dtype(in) == get_dtype(in));
     Convert_array *func = convert_array_dtable[int(dtype_out)][int(dtype_in)];
     if (!func) {
-
         PyErr_Format(PyExc_TypeError, "Cannot convert %s to %s.",
                      dtype_names[int(dtype_in)], dtype_names[int(dtype_out)]);
         return 0;
@@ -1090,11 +1120,30 @@ template PyObject *seq_getitem(Array<Complex>*, Py_ssize_t);
 extern "C"
 void inittinyarray()
 {
+    // Determine storage formats.
+    bool be = is_big_endian();
+    if (std::numeric_limits<double>::is_iec559 &&
+        sizeof(double) == 8) {
+        format_by_dtype[int(Dtype::DOUBLE)] = Format(FLOAT64_LE + be);
+        format_by_dtype[int(Dtype::COMPLEX)] = Format(COMPLEX128_LE + be);
+    } else {
+        format_by_dtype[int(Dtype::DOUBLE)] = UNKNOWN;
+        format_by_dtype[int(Dtype::COMPLEX)] = UNKNOWN;
+    }
+    if (sizeof(long) == 8)
+        format_by_dtype[int(Dtype::LONG)] = Format(INT64_LE + be);
+    else if (sizeof(long) == 4)
+        format_by_dtype[int(Dtype::LONG)] = Format(INT32_LE + be);
+    else
+        format_by_dtype[int(Dtype::LONG)] = UNKNOWN;
+
     if (PyType_Ready(&Array<long>::pytype) < 0) return;
     if (PyType_Ready(&Array<double>::pytype) < 0) return;
     if (PyType_Ready(&Array<Complex>::pytype) < 0) return;
 
-    PyObject* m = Py_InitModule("tinyarray", functions);
+    PyObject *m = Py_InitModule("tinyarray", functions);
+
+    reconstruct = PyObject_GetAttrString(m, "_reconstruct");
 
     Py_INCREF(&Array<long>::pytype);
     Py_INCREF(&Array<double>::pytype);
@@ -1486,107 +1535,29 @@ Array<T> *Array<T>::make(int ndim, const size_t *shape, size_t *sizep)
     return result;
 }
 
-static bool little_endian()
-{
-    union {
-        uint32_t i;
-        char c[4];
-    } bint = {0x04030201};
-
-    return bint.c[0] == 1;
-}
-
 template <typename T>
-PyObject *tinyarray_reduce(PyObject *py_self)
+PyObject *reduce(PyObject *self_)
 {
-    PyObject *py_ret, *py_state, *py_constructor, *py_mod;
-
-    assert(Array<T>::check_exact(self_)); Array<T> *self = (Array<T>*)py_self;
-
-    py_ret = PyTuple_New(3);
-    if (!py_ret) {
-        return 0;
-    }
-    py_mod = PyImport_ImportModule("tinyarray");
-    if (!py_mod) {
-        Py_DECREF(py_ret);
-        return 0;
-    }
-    py_constructor = PyObject_GetAttrString(py_mod, "_empty");
-    Py_DECREF(py_mod);
+    assert(Array<T>::check_exact(self_)); Array<T> *self = (Array<T>*)self_;
+    PyObject *result = PyTuple_New(2);
+    if (!result) return 0;
 
     int ndim;
     size_t *shape;
-    T *data = self->data();
     self->ndim_shape(&ndim, &shape);
     size_t size_in_bytes = calc_size(ndim, shape) * sizeof(T);
 
-    PyObject *py_data = PyString_FromStringAndSize((char*)data, size_in_bytes);
-    PyObject *py_dtype = get_dtype_py(py_self, NULL);
-    PyObject *py_shape = PyTuple_New(ndim);
+    Py_INCREF(reconstruct);
+    PyObject *pyshape = PyTuple_New(ndim);
     for (int i=0; i < ndim; ++i)
-        PyTuple_SET_ITEM(py_shape, i, PyInt_FromSize_t(shape[i]));
+        PyTuple_SET_ITEM(pyshape, i, PyInt_FromSize_t(shape[i]));
+    PyObject *format = PyInt_FromLong(format_by_dtype[int(get_dtype(self_))]);
+    PyObject *data = PyString_FromStringAndSize((char*)self->data(),
+                                                size_in_bytes);
 
-
-    PyTuple_SET_ITEM(py_ret, 0, py_constructor);
-    PyTuple_SET_ITEM(py_ret, 1, Py_BuildValue("(OO)", py_shape, py_dtype));
-
-    // fill in state to be passed to __setstate__
-    py_state = PyTuple_New(3);
-    if (!py_state) {
-        Py_DECREF(py_ret);
-        return 0;
-    }
-    PyTuple_SET_ITEM(py_state, 0, py_data);
-    PyTuple_SET_ITEM(py_state, 1, PyInt_FromLong(little_endian()));
-    PyTuple_SET_ITEM(py_state, 2, PyInt_FromLong(sizeof(int)));
-
-    PyTuple_SET_ITEM(py_ret, 2, py_state);
-    return py_ret;
-}
-
-template <typename T>
-PyObject *tinyarray_reduce_ex(PyObject *py_self, PyObject*)
-{
-    return tinyarray_reduce<T>(py_self);
-}
-
-template <typename T>
-PyObject *tinyarray_setstate(PyObject *py_self, PyObject *py_args)
-{
-    assert(Array<T>::check_exact(self_)); Array<T> *self = (Array<T>*)py_self;
-    T* data = 0;
-    size_t size_in_bytes;
-    Dtype dtype = get_dtype(py_self);
-    int pickle_little_endian, pickle_byte_size;
-
-    PyArg_ParseTuple(py_args, "(s#ii)",
-                    (char*)&data, &size_in_bytes,
-                    &pickle_little_endian,
-                    &pickle_byte_size);
-
-    // Check for endianness and integer size between pickling and unpickling
-    // environment.
-    if (dtype == Dtype::LONG && little_endian() != pickle_little_endian) {
-        PyErr_SetString(PyExc_RuntimeError,
-            "Endianness of pickled TinyArray and "
-            "local machine are not identical.");
-        return 0;
-    }
-
-    if (dtype == Dtype::LONG && pickle_byte_size != sizeof(int)) {
-        PyErr_SetString(PyExc_RuntimeError,
-            "integer size of pickled TinyArray is not the same "
-            "as the integer size of local machine.");
-        return 0;
-    }
-
-    size_t size = size_in_bytes / sizeof(T);
-    T *self_data = self->data();
-    for(size_t i = 0; i < size; ++i) self_data[i] = data[i];
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    PyTuple_SET_ITEM(result, 0, reconstruct);
+    PyTuple_SET_ITEM(result, 1, Py_BuildValue("(OOO)", pyshape, format, data));
+    return result;
 }
 
 // **************** Type object ****************
@@ -1626,9 +1597,7 @@ template <typename T>
 PyMethodDef Array<T>::methods[] = {
     {"transpose", (PyCFunction)transpose<T>, METH_NOARGS},
     {"conjugate", (PyCFunction)apply_unary_ufunc<Conjugate<T> >, METH_NOARGS},
-    {"__reduce__", (PyCFunction)tinyarray_reduce<T>, METH_NOARGS},
-    {"__reduce_ex__", (PyCFunction)tinyarray_reduce_ex<T>, METH_VARARGS},
-    {"__setstate__", (PyCFunction)tinyarray_setstate<T>, METH_VARARGS},
+    {"__reduce__", (PyCFunction)reduce<T>, METH_NOARGS},
     {0, 0}                      // Sentinel
 };
 
@@ -1686,14 +1655,6 @@ template PyObject *transpose<long>(PyObject*);
 template PyObject *transpose<double>(PyObject*);
 template PyObject *transpose<Complex>(PyObject*);
 
-template PyObject *tinyarray_reduce<long>(PyObject*);
-template PyObject *tinyarray_reduce<double>(PyObject*);
-template PyObject *tinyarray_reduce<Complex>(PyObject*);
-
-template PyObject *tinyarray_reduce_ex<long>(PyObject*, PyObject*);
-template PyObject *tinyarray_reduce_ex<double>(PyObject*, PyObject*);
-template PyObject *tinyarray_reduce_ex<Complex>(PyObject*, PyObject*);
-
-template PyObject *tinyarray_setstate<long>(PyObject*, PyObject*);
-template PyObject *tinyarray_setstate<double>(PyObject*, PyObject*);
-template PyObject *tinyarray_setstate<Complex>(PyObject*, PyObject*);
+template PyObject *reduce<long>(PyObject*);
+template PyObject *reduce<double>(PyObject*);
+template PyObject *reduce<Complex>(PyObject*);

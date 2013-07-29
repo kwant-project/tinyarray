@@ -6,12 +6,22 @@ typedef std::complex<double> Complex;
 
 const int max_ndim = 16;
 
+// First constant must be 0, the last one must be `NONE'.
 enum class Dtype : char {LONG = 0, DOUBLE, COMPLEX, NONE};
 const Dtype default_dtype = Dtype::DOUBLE;
 
 extern const char *dtype_names[];
 
 #define DTYPE_DISPATCH(func) {func<long>, func<double>, func<Complex>}
+
+// First constant must be 0, the last one must be `UNKNOWN'.
+enum Format {INT32_LE = 0, INT32_BE, INT64_LE, INT64_BE,
+             FLOAT64_LE, FLOAT64_BE, COMPLEX128_LE, COMPLEX128_BE,
+             UNKNOWN};
+
+extern const char *format_names[];
+
+extern Format format_by_dtype[];
 
 // We use the ob_size field in a clever way to encode either the length of a
 // 1-d array, or the number of dimensions for multi-dimensional arrays.  The
