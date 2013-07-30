@@ -8,8 +8,8 @@
 #include "arithmetic.hh"
 #include "conversion.hh"
 
-static_assert(int(-3) / int(2) == -1,
-              "C99 behavior of division is assumed in this module.");
+// This module assumes C99 behavior of division:
+// int(-3) / int(2) == -1
 
 namespace {
 
@@ -393,16 +393,16 @@ end:
 template <typename Op>
 PyObject *apply_unary_ufunc(PyObject *a_)
 {
-    typedef typename Op::Type T;
+    typedef typename Op::IType IT;
+    typedef typename Op::OType OT;
     Op operation;
-    typedef decltype(operation(T())) R; // Return type
 
     if (Op::error) {
         PyErr_SetString(PyExc_TypeError, Op::error);
         return 0;
     }
 
-    assert(Array<T>::check_exact(a_)); Array<T> *a = (Array<T>*)a_;
+    assert(Array<IT>::check_exact(a_)); Array<IT> *a = (Array<IT>*)a_;
     int ndim;
     size_t *shape;
     a->ndim_shape(&ndim, &shape);
@@ -415,75 +415,101 @@ PyObject *apply_unary_ufunc(PyObject *a_)
     }
 
     size_t size;
-    Array<R> *result = Array<R>::make(ndim, shape, &size);
+    Array<OT> *result = Array<OT>::make(ndim, shape, &size);
     if (result == 0) return 0;
-    T *src = a->data();
-    R *dest = result->data();
+    IT *src = a->data();
+    OT *dest = result->data();
     for (size_t i = 0; i < size; ++i) dest[i] = operation(src[i]);
     return (PyObject*)result;
 }
 
 template <typename T>
 struct Negative {
-    typedef T Type;
-    static constexpr const char *error = 0;
+    typedef T IType;
+    typedef T OType;
+    static const char *error;
     static const bool unchanged = false;
     T operator()(T x) { return -x; }
 };
 
 template <typename T>
+const char *Negative<T>::error = 0;
+
+template <typename T>
 struct Positive {
-    typedef T Type;
-    static constexpr const char *error = 0;
+    typedef T IType;
+    typedef T OType;
+    static const char *error;
     static const bool unchanged = true;
     T operator()(T x) { return x; }
 };
 
 template <typename T>
+const char *Positive<T>::error = 0;
+
+template <typename T>
 struct Absolute {
-    typedef T Type;
-    static constexpr const char *error = 0;
+    typedef T IType;
+    typedef T OType;
+    static const char *error;
     static const bool unchanged = false;
     T operator()(T x) { return std::abs(x); }
 };
 
 template <>
 struct Absolute<Complex> {
-    typedef Complex Type;
-    static constexpr const char *error = 0;
+    typedef Complex IType;
+    typedef double OType;
+    static const char *error;
     static const bool unchanged = false;
     double operator()(Complex x) { return std::abs(x); }
 };
 
 template <typename T>
+const char *Absolute<T>::error = 0;
+// Needed for gcc 4.4.
+const char *Absolute<Complex>::error = 0;
+
+template <typename T>
 struct Conjugate {
-    typedef T Type;
-    static constexpr const char *error = 0;
+    typedef T IType;
+    typedef T OType;
+    static const char *error;
     static const bool unchanged = true;
     T operator()(T x) { return x; }
 };
 
 template <>
 struct Conjugate<Complex> {
-    typedef Complex Type;
-    static constexpr const char *error = 0;
+    typedef Complex IType;
+    typedef Complex OType;
+    static const char *error;
     static const bool unchanged = false;
     Complex operator()(Complex x) { return std::conj(x); }
 };
 
+template <typename T>
+const char *Conjugate<T>::error = 0;
+const char *Conjugate<Complex>::error = 0;
+
 // Integers are not changed by any kind of rounding.
 template <typename Kind>
 struct Round<Kind, long> {
-    typedef long Type;
-    static constexpr const char *error = 0;
+    typedef long IType;
+    typedef long OType;
+    static const char *error;
     static const bool unchanged = true;
     long operator()(long x) { return x; }
 };
 
 template <typename Kind>
+const char *Round<Kind, long>::error = 0;
+
+template <typename Kind>
 struct Round<Kind, double> {
-    typedef double Type;
-    static constexpr const char *error = 0;
+    typedef double IType;
+    typedef double OType;
+    static const char *error;
     static const bool unchanged = false;
     double operator()(double x) {
         Kind rounding_kind;
@@ -492,13 +518,20 @@ struct Round<Kind, double> {
 };
 
 template <typename Kind>
+const char *Round<Kind, double>::error = 0;
+
+template <typename Kind>
 struct Round<Kind, Complex> {
-    typedef Complex Type;
-    static constexpr const char *error =
-        "Rounding is not defined for complex numbers.";
+    typedef Complex IType;
+    typedef Complex OType;
+    static const char *error;
     static const bool unchanged = false;
     Complex operator()(Complex) { return 0.0/0.0; }
 };
+
+template <typename Kind>
+const char *Round<Kind, Complex>::error =
+    "Rounding is not defined for complex numbers.";
 
 // The following three types are used as Kind template parameter for Round.
 
@@ -523,48 +556,48 @@ struct Ceil { double operator()(double x) { return std::ceil(x); } };
 
 template <typename T>
 PyNumberMethods Array<T>::as_number = {
-    Binary_op<Add>::apply,          // nb_add
-    Binary_op<Subtract>::apply,     // nb_subtract
-    Binary_op<Multiply>::apply,     // nb_multiply
-    Binary_op<Divide>::apply,       // nb_divide
-    Binary_op<Remainder>::apply,    // nb_remainder
-    (binaryfunc)0,                  // nb_divmod
-    (ternaryfunc)0,                 // nb_power
-    apply_unary_ufunc<Negative<T>>, // nb_negative
-    apply_unary_ufunc<Positive<T>>, // nb_positive
-    apply_unary_ufunc<Absolute<T>>, // nb_absolute
-    (inquiry)0,                     // nb_nonzero
-    (unaryfunc)0,                   // nb_invert
-    (binaryfunc)0,                  // nb_lshift
-    (binaryfunc)0,                  // nb_rshift
-    (binaryfunc)0,                  // nb_and
-    (binaryfunc)0,                  // nb_xor
-    (binaryfunc)0,                  // nb_or
-    (coercion)0,                    // nb_coerce
-    (unaryfunc)0,                   // nb_int
-    (unaryfunc)0,                   // nb_long
-    (unaryfunc)0,                   // nb_float
-    (unaryfunc)0,                   // nb_oct
-    (unaryfunc)0,                   // nb_hex
+    Binary_op<Add>::apply,           // nb_add
+    Binary_op<Subtract>::apply,      // nb_subtract
+    Binary_op<Multiply>::apply,      // nb_multiply
+    Binary_op<Divide>::apply,        // nb_divide
+    Binary_op<Remainder>::apply,     // nb_remainder
+    (binaryfunc)0,                   // nb_divmod
+    (ternaryfunc)0,                  // nb_power
+    apply_unary_ufunc<Negative<T> >, // nb_negative
+    apply_unary_ufunc<Positive<T> >, // nb_positive
+    apply_unary_ufunc<Absolute<T> >, // nb_absolute
+    (inquiry)0,                      // nb_nonzero
+    (unaryfunc)0,                    // nb_invert
+    (binaryfunc)0,                   // nb_lshift
+    (binaryfunc)0,                   // nb_rshift
+    (binaryfunc)0,                   // nb_and
+    (binaryfunc)0,                   // nb_xor
+    (binaryfunc)0,                   // nb_or
+    (coercion)0,                     // nb_coerce
+    (unaryfunc)0,                    // nb_int
+    (unaryfunc)0,                    // nb_long
+    (unaryfunc)0,                    // nb_float
+    (unaryfunc)0,                    // nb_oct
+    (unaryfunc)0,                    // nb_hex
 
-    (binaryfunc)0,                  // nb_inplace_add
-    (binaryfunc)0,                  // nb_inplace_subtract
-    (binaryfunc)0,                  // nb_inplace_multiply
-    (binaryfunc)0,                  // nb_inplace_divide
-    (binaryfunc)0,                  // nb_inplace_remainder
-    (ternaryfunc)0,                 // nb_inplace_power
-    (binaryfunc)0,                  // nb_inplace_lshift
-    (binaryfunc)0,                  // nb_inplace_rshift
-    (binaryfunc)0,                  // nb_inplace_and
-    (binaryfunc)0,                  // nb_inplace_xor
-    (binaryfunc)0,                  // nb_inplace_or
+    (binaryfunc)0,                   // nb_inplace_add
+    (binaryfunc)0,                   // nb_inplace_subtract
+    (binaryfunc)0,                   // nb_inplace_multiply
+    (binaryfunc)0,                   // nb_inplace_divide
+    (binaryfunc)0,                   // nb_inplace_remainder
+    (ternaryfunc)0,                  // nb_inplace_power
+    (binaryfunc)0,                   // nb_inplace_lshift
+    (binaryfunc)0,                   // nb_inplace_rshift
+    (binaryfunc)0,                   // nb_inplace_and
+    (binaryfunc)0,                   // nb_inplace_xor
+    (binaryfunc)0,                   // nb_inplace_or
 
-    Binary_op<Floor_divide>::apply, // nb_floor_divide
-    (binaryfunc)0,                  // nb_true_divide
-    (binaryfunc)0,                  // nb_inplace_floor_divide
-    (binaryfunc)0,                  // nb_inplace_true_divide
+    Binary_op<Floor_divide>::apply,  // nb_floor_divide
+    (binaryfunc)0,                   // nb_true_divide
+    (binaryfunc)0,                   // nb_inplace_floor_divide
+    (binaryfunc)0,                   // nb_inplace_true_divide
 
-    (unaryfunc)0                    // nb_index
+    (unaryfunc)0                     // nb_index
 };
 
 // Explicit instantiations.
@@ -572,18 +605,18 @@ template PyNumberMethods Array<long>::as_number;
 template PyNumberMethods Array<double>::as_number;
 template PyNumberMethods Array<Complex>::as_number;
 
-template PyObject *apply_unary_ufunc<Conjugate<long>>(PyObject*);
-template PyObject *apply_unary_ufunc<Conjugate<double>>(PyObject*);
-template PyObject *apply_unary_ufunc<Conjugate<Complex>>(PyObject*);
+template PyObject *apply_unary_ufunc<Conjugate<long> >(PyObject*);
+template PyObject *apply_unary_ufunc<Conjugate<double> >(PyObject*);
+template PyObject *apply_unary_ufunc<Conjugate<Complex> >(PyObject*);
 
-template PyObject *apply_unary_ufunc<Round<Nearest, long>>(PyObject*);
-template PyObject *apply_unary_ufunc<Round<Nearest, double>>(PyObject*);
-template PyObject *apply_unary_ufunc<Round<Nearest, Complex>>(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Nearest, long> >(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Nearest, double> >(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Nearest, Complex> >(PyObject*);
 
-template PyObject *apply_unary_ufunc<Round<Floor, long>>(PyObject*);
-template PyObject *apply_unary_ufunc<Round<Floor, double>>(PyObject*);
-template PyObject *apply_unary_ufunc<Round<Floor, Complex>>(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Floor, long> >(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Floor, double> >(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Floor, Complex> >(PyObject*);
 
-template PyObject *apply_unary_ufunc<Round<Ceil, long>>(PyObject*);
-template PyObject *apply_unary_ufunc<Round<Ceil, double>>(PyObject*);
-template PyObject *apply_unary_ufunc<Round<Ceil, Complex>>(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Ceil, long> >(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Ceil, double> >(PyObject*);
+template PyObject *apply_unary_ufunc<Round<Ceil, Complex> >(PyObject*);

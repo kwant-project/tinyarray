@@ -11,11 +11,11 @@ int dtype_converter(const PyObject *ob, Dtype *dtype)
         *dtype = default_dtype;
     } else if (ob == (PyObject *)(&PyInt_Type) ||
                ob == (PyObject *)(&PyLong_Type)) {
-        *dtype = Dtype::LONG;
+        *dtype = LONG;
     } else if (ob == (PyObject *)(&PyFloat_Type)) {
-        *dtype = Dtype::DOUBLE;
+        *dtype = DOUBLE;
     } else if (ob == (PyObject *)(&PyComplex_Type)) {
-        *dtype = Dtype::COMPLEX;
+        *dtype = COMPLEX;
     } else {
         PyErr_SetString(PyExc_TypeError, "Invalid dtype.");
         return 0;
@@ -58,9 +58,9 @@ PyObject *reconstruct(PyObject *, PyObject *args)
     while (true) {
         if (format_by_dtype[int(dtype)] == format) break;
         dtype = Dtype(int(dtype) + 1);
-        if (dtype == Dtype::NONE) {
-            if (format < 0 || format > Format::UNKNOWN)
-                format = Format::UNKNOWN;
+        if (dtype == NONE) {
+            if (format < 0 || format > UNKNOWN)
+                format = UNKNOWN;
             PyErr_Format(PyExc_TypeError, "Cannot unpickle %s.",
                          format_names[format]);
             return 0;
@@ -156,7 +156,7 @@ PyObject *identity(PyObject *, PyObject *args)
 PyObject *array(PyObject *, PyObject *args)
 {
     PyObject *src;
-    Dtype dtype = Dtype::NONE;
+    Dtype dtype = NONE;
     if (!PyArg_ParseTuple(args, "O|O&", &src, dtype_converter, &dtype))
         return 0;
     return array_from_arraylike(src, &dtype);
@@ -165,7 +165,7 @@ PyObject *array(PyObject *, PyObject *args)
 PyObject *matrix(PyObject *, PyObject *args)
 {
     PyObject *src;
-    Dtype dtype = Dtype::NONE;
+    Dtype dtype = NONE;
     if (!PyArg_ParseTuple(args, "O|O&", &src, dtype_converter, &dtype))
         return 0;
     return matrix_from_arraylike(src, &dtype);
@@ -177,7 +177,7 @@ PyObject *transpose(PyObject *, PyObject *args)
 {
     PyObject *a;
     if (!PyArg_ParseTuple(args, "O", &a)) return 0;
-    Dtype dtype = Dtype::NONE;
+    Dtype dtype = NONE;
     a = array_from_arraylike(a, &dtype);
     if (!a) return 0;
     return transpose_dtable[int(dtype)](a);
@@ -201,9 +201,6 @@ PyObject *binary_ufunc(PyObject *, PyObject *args)
 template <template <typename> class Op>
 PyObject *unary_ufunc(PyObject *, PyObject *args)
 {
-    static_assert(int(Dtype::LONG) == 0 && int(Dtype::DOUBLE) == 1 &&
-                  int(Dtype::COMPLEX) == 2 && int(Dtype::NONE) == 3,
-                  "Update me.");
     static PyObject *(*operation_dtable[])(PyObject*) = {
         apply_unary_ufunc<Op<long> >,
         apply_unary_ufunc<Op<double> >,
@@ -212,7 +209,7 @@ PyObject *unary_ufunc(PyObject *, PyObject *args)
 
     PyObject *a;
     if (!PyArg_ParseTuple(args, "O", &a)) return 0;
-    Dtype dtype = Dtype::NONE;
+    Dtype dtype = NONE;
     a = array_from_arraylike(a, &dtype);
     if (!a) return 0;
     PyObject *result = operation_dtable[int(dtype)](a);
@@ -223,9 +220,6 @@ PyObject *unary_ufunc(PyObject *, PyObject *args)
 template <typename Kind>
 PyObject *unary_ufunc_round(PyObject *, PyObject *args)
 {
-    static_assert(int(Dtype::LONG) == 0 && int(Dtype::DOUBLE) == 1 &&
-                  int(Dtype::COMPLEX) == 2 && int(Dtype::NONE) == 3,
-                  "Update me.");
     static PyObject *(*operation_dtable[])(PyObject*) = {
         apply_unary_ufunc<Round<Kind, long> >,
         apply_unary_ufunc<Round<Kind, double> >,
@@ -234,7 +228,7 @@ PyObject *unary_ufunc_round(PyObject *, PyObject *args)
 
     PyObject *a;
     if (!PyArg_ParseTuple(args, "O", &a)) return 0;
-    Dtype dtype = Dtype::NONE;
+    Dtype dtype = NONE;
     a = array_from_arraylike(a, &dtype);
     if (!a) return 0;
     PyObject *result = operation_dtable[int(dtype)](a);

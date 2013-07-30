@@ -7,8 +7,8 @@ typedef std::complex<double> Complex;
 const int max_ndim = 16;
 
 // First constant must be 0, the last one must be `NONE'.
-enum class Dtype : char {LONG = 0, DOUBLE, COMPLEX, NONE};
-const Dtype default_dtype = Dtype::DOUBLE;
+enum Dtype {LONG = 0, DOUBLE, COMPLEX, NONE};
+const Dtype default_dtype = DOUBLE;
 
 extern const char *dtype_names[];
 
@@ -99,10 +99,10 @@ inline size_t calc_size(int ndim, const size_t *shape)
 inline Dtype get_dtype(PyObject *obj)
 {
     PyTypeObject *pytype = Py_TYPE(obj);
-    if (pytype == &Array<long>::pytype) return Dtype::LONG;
-    if (pytype == &Array<double>::pytype) return Dtype::DOUBLE;
-    if (pytype == &Array<Complex>::pytype) return Dtype::COMPLEX;
-    return Dtype::NONE;
+    if (pytype == &Array<long>::pytype) return LONG;
+    if (pytype == &Array<double>::pytype) return DOUBLE;
+    if (pytype == &Array<Complex>::pytype) return COMPLEX;
+    return NONE;
 }
 
 PyObject *array_from_arraylike(PyObject *in, Dtype *dtype,

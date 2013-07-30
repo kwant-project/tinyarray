@@ -23,7 +23,7 @@ const char *format_names[] = {
     "complex128 little endian", "complex128 big endian",
     "unknown"};
 
-Format format_by_dtype[int(Dtype::NONE)];
+Format format_by_dtype[NONE];
 
 namespace {
 
@@ -53,52 +53,52 @@ PyObject *int_str, *long_str, *float_str, *complex_str, *index_str,
 
 Dtype dtype_of_scalar(PyObject *obj)
 {
-    if (PyComplex_Check(obj)) return Dtype::COMPLEX;
-    if (PyFloat_Check(obj)) return Dtype::DOUBLE;
-    if (PyInt_Check(obj)) return Dtype::LONG;
+    if (PyComplex_Check(obj)) return COMPLEX;
+    if (PyFloat_Check(obj)) return DOUBLE;
+    if (PyInt_Check(obj)) return LONG;
     // TODO: The following line should be removed for Python 3.
-    if (PyLong_Check(obj)) return Dtype::LONG;
-    if (PyObject_HasAttr(obj, index_str)) return Dtype::LONG;
+    if (PyLong_Check(obj)) return LONG;
+    if (PyObject_HasAttr(obj, index_str)) return LONG;
 
     // I'm not sure about this paragraph.  Does the existence of a __complex__
     // method already signify that the number is to be interpreted as a complex
     // number?  What about __float__?  Perhaps the following code is useless.
     // In practice (with built-in and numpy numerical types) it never plays a
     // role anyway.
-    if (PyObject_HasAttr(obj, complex_str)) return Dtype::COMPLEX;
-    if (PyObject_HasAttr(obj, float_str)) return Dtype::DOUBLE;
-    if (PyObject_HasAttr(obj, int_str)) return Dtype::LONG;
+    if (PyObject_HasAttr(obj, complex_str)) return COMPLEX;
+    if (PyObject_HasAttr(obj, float_str)) return DOUBLE;
+    if (PyObject_HasAttr(obj, int_str)) return LONG;
     // TODO: The following line should be removed for Python 3.
-    if (PyObject_HasAttr(obj, long_str)) return Dtype::LONG;
+    if (PyObject_HasAttr(obj, long_str)) return LONG;
 
-    return Dtype::NONE;
+    return NONE;
 }
 
 Dtype dtype_of_buffer(Py_buffer *view)
 {
     char *fmt = view->format;
-    Dtype dtype = Dtype::NONE;
+    Dtype dtype = NONE;
 
     // Currently, we only understand native endianness and alignment.
     if (*fmt == '@') fmt++;
 
     if (strchr("cbB?hHiIlL", *fmt)) {
-        dtype = Dtype::LONG;
+        dtype = LONG;
         fmt++;
     } else if (strchr("fdg", *fmt)) {
-        dtype = Dtype::DOUBLE;
+        dtype = DOUBLE;
         fmt++;
     } else if (*fmt == 'Z') {
         fmt++;
         if (strchr("fdg", *fmt)) {
-            dtype = Dtype::COMPLEX;
+            dtype = COMPLEX;
         }
         fmt++;
     }
 
     // Right now, no composite data structures are supported; if we found a
     // single supported data type, we should be a the end of the string.
-    if (*fmt != '\0') return Dtype::NONE;
+    if (*fmt != '\0') return NONE;
 
     return dtype;
 }
@@ -144,7 +144,7 @@ Convert_array *convert_array_dtable[][3] = {
 PyObject *convert_array(Dtype dtype_out, PyObject *in, Dtype dtype_in,
                         int ndim = -1, size_t *shape = 0)
 {
-    if (dtype_in == Dtype::NONE)
+    if (dtype_in == NONE)
         dtype_in = get_dtype(in);
     assert(get_dtype(in) == get_dtype(in));
     Convert_array *func = convert_array_dtable[int(dtype_out)][int(dtype_in)];
@@ -192,7 +192,7 @@ int examine_arraylike(PyObject *arraylike, int *ndim, size_t *shape,
             // requested.
             if (dtype_guess) {
                 *dtype_guess = dtype_of_scalar(p);
-                if (*dtype_guess == Dtype::NONE) {
+                if (*dtype_guess == NONE) {
                     PyErr_SetString(PyExc_TypeError, "Expecting a number.");
                     goto fail;
                 }
@@ -208,7 +208,7 @@ int examine_arraylike(PyObject *arraylike, int *ndim, size_t *shape,
             p = *PySequence_Fast_ITEMS(seqs[d]);
         } else {
             // We are in the innermost sequence which is empty.
-            if (dtype_guess) *dtype_guess = Dtype::NONE;
+            if (dtype_guess) *dtype_guess = NONE;
             break;
         }
     }
@@ -344,7 +344,7 @@ PyObject *(*make_and_readin_array_dtable[])(
 
 int examine_buffer(PyObject *in, Py_buffer *view, Dtype *dtype)
 {
-    Dtype dt = Dtype::NONE;
+    Dtype dt = NONE;
     memset(view, 0, sizeof(Py_buffer));
     if (!PyObject_CheckBuffer(in)) return -1;
 
@@ -360,7 +360,7 @@ int examine_buffer(PyObject *in, Py_buffer *view, Dtype *dtype)
 
     // Check if the buffer can actually be converted into one of our
     // formats.
-    if (dt == Dtype::NONE) return -1;
+    if (dt == NONE) return -1;
 
     if (dtype) *dtype = dt;
     return 0;
@@ -903,7 +903,7 @@ PyObject *get_dtype_py(PyObject *self, void *)
         (PyObject*)&PyComplex_Type
     };
     int dtype = int(get_dtype(self));
-    assert(dtype < int(Dtype::NONE));
+    assert(dtype < int(NONE));
     return dtypes[dtype];
 }
 
@@ -1124,18 +1124,18 @@ void inittinyarray()
     bool be = is_big_endian();
     if (std::numeric_limits<double>::is_iec559 &&
         sizeof(double) == 8) {
-        format_by_dtype[int(Dtype::DOUBLE)] = Format(FLOAT64_LE + be);
-        format_by_dtype[int(Dtype::COMPLEX)] = Format(COMPLEX128_LE + be);
+        format_by_dtype[int(DOUBLE)] = Format(FLOAT64_LE + be);
+        format_by_dtype[int(COMPLEX)] = Format(COMPLEX128_LE + be);
     } else {
-        format_by_dtype[int(Dtype::DOUBLE)] = UNKNOWN;
-        format_by_dtype[int(Dtype::COMPLEX)] = UNKNOWN;
+        format_by_dtype[int(DOUBLE)] = UNKNOWN;
+        format_by_dtype[int(COMPLEX)] = UNKNOWN;
     }
     if (sizeof(long) == 8)
-        format_by_dtype[int(Dtype::LONG)] = Format(INT64_LE + be);
+        format_by_dtype[int(LONG)] = Format(INT64_LE + be);
     else if (sizeof(long) == 4)
-        format_by_dtype[int(Dtype::LONG)] = Format(INT32_LE + be);
+        format_by_dtype[int(LONG)] = Format(INT32_LE + be);
     else
-        format_by_dtype[int(Dtype::LONG)] = UNKNOWN;
+        format_by_dtype[int(LONG)] = UNKNOWN;
 
     if (PyType_Ready(&Array<long>::pytype) < 0) return;
     if (PyType_Ready(&Array<double>::pytype) < 0) return;
@@ -1221,7 +1221,7 @@ int load_index_seq_as_ulong(PyObject *obj, unsigned long *uout,
     return len;
 }
 
-// If *dtype == Dtype::NONE the simplest fitting dtype (at least dtype_min)
+// If *dtype == NONE the simplest fitting dtype (at least dtype_min)
 // will be used and written back to *dtype.  Any other value of *dtype requests
 // an array of the given dtype.
 PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
@@ -1230,9 +1230,9 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
     int ndim;
     size_t shape[max_ndim];
     PyObject *seqs[max_ndim], *result;
-    if (dtype_in != Dtype::NONE) {
+    if (dtype_in != NONE) {
         // `in` is already an array.
-        if (dt == Dtype::NONE)
+        if (dt == NONE)
             dt = Dtype(std::max(int(dtype_in), int(dtype_min)));
         if (dt == dtype_in)
             Py_INCREF(result = in);
@@ -1244,7 +1244,7 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
     } else {
         // `in` is not an array.
 
-        bool find_type = (dt == Dtype::NONE);
+        bool find_type = (dt == NONE);
 
         // Try if buffer interface is supported
         Py_buffer view;
@@ -1266,7 +1266,7 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
                 PyObject *seqs_copy[max_ndim];
                 for (int d = 0; d < ndim; ++d)
                     Py_INCREF(seqs_copy[d] = seqs[d]);
-                if (dt == Dtype::NONE) {
+                if (dt == NONE) {
                     assert(shape[ndim - 1] == 0);
                     dt = default_dtype;
                 }
@@ -1276,7 +1276,7 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
                         in, ndim, ndim, shape, seqs, true);
                     if (result) break;
                     dt = Dtype(int(dt) + 1);
-                    if (dt == Dtype::NONE) {
+                    if (dt == NONE) {
                         result = 0;
                         break;
                     }
@@ -1299,7 +1299,7 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
     return 0;
 }
 
-// If *dtype == Dtype::NONE the simplest fitting dtype (at least dtype_min)
+// If *dtype == NONE the simplest fitting dtype (at least dtype_min)
 // will be used and written back to *dtype.  Any other value of *dtype requests
 // an array of the given dtype.
 PyObject *matrix_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
@@ -1308,9 +1308,9 @@ PyObject *matrix_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
     int ndim;
     size_t shape[max_ndim];
     PyObject *seqs[max_ndim], *result;
-    if (dtype_in != Dtype::NONE) {
+    if (dtype_in != NONE) {
         // `in` is already an array.
-        if (dt == Dtype::NONE)
+        if (dt == NONE)
             dt = Dtype(std::max(int(dtype_in), int(dtype_min)));
         size_t *in_shape;
         reinterpret_cast<Array_base*>(in)->ndim_shape(&ndim, &in_shape);
@@ -1333,7 +1333,7 @@ PyObject *matrix_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
     } else {
         // `in` is not an array.
 
-        bool find_type = (*dtype == Dtype::NONE);
+        bool find_type = (*dtype == NONE);
 
         // Try if buffer interface is supported
         Py_buffer view;
@@ -1375,7 +1375,7 @@ PyObject *matrix_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
                 PyObject *seqs_copy[max_ndim];
                 for (int d = 0; d < ndim; ++d)
                     Py_INCREF(seqs_copy[d] = seqs[d]);
-                if (dt == Dtype::NONE) {
+                if (dt == NONE) {
                     assert(shape[1] == 0);
                     dt = default_dtype;
                 }
@@ -1385,7 +1385,7 @@ PyObject *matrix_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
                         in, ndim, 2, shape, seqs, true);
                     if (result) break;
                     dt = Dtype(int(dt) + 1);
-                    if (dt == Dtype::NONE) {
+                    if (dt == NONE) {
                         result = 0;
                         break;
                     }
@@ -1413,7 +1413,7 @@ int coerce_to_arrays(PyObject **a_, PyObject **b_, Dtype *coerced_dtype)
     PyObject *a = *a_, *b = *b_;
 
     // Make sure a and b are tinyarrays.
-    Dtype dtype_a = Dtype::NONE, dtype_b = Dtype::NONE, dtype;
+    Dtype dtype_a = NONE, dtype_b = NONE, dtype;
     a = array_from_arraylike(a, &dtype_a);
     if (!a) return -1;
     b = array_from_arraylike(b, &dtype_b, dtype_a);
