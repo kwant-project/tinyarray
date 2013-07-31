@@ -6,6 +6,7 @@
 #include "arithmetic.hh"
 #include "functions.hh"
 #include "conversion.hh"
+#include "version.hh"
 
 template <>
 const char *Array<long>::pyformat = "l";
@@ -1155,6 +1156,8 @@ void inittinyarray()
     Py_INCREF(&Array<long>::pytype);
     Py_INCREF(&Array<double>::pytype);
     Py_INCREF(&Array<Complex>::pytype);
+
+    PyModule_AddObject(m, "__version__", PyString_FromString(VERSION));
 
     PyModule_AddObject(m, "ndarray_int",
                        (PyObject *)&Array<long>::pytype);

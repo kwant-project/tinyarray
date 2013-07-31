@@ -1,6 +1,65 @@
 #!/usr/bin/env python
 
+import subprocess
+import os
 from distutils.core import setup, Extension
+
+STATIC_VERSION_FILE = 'src/version.hh'
+
+tinyarray_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+def get_version_from_git():
+    try:
+        p = subprocess.Popen(['git', 'describe'], cwd=tinyarray_dir,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except OSError:
+        return
+
+    if p.wait() != 0:
+        return
+    version = p.communicate()[0].strip()
+
+    if version[0] == 'v':
+        version = version[1:]
+
+    try:
+        p = subprocess.Popen(['git', 'diff', '--quiet'], cwd=tinyarray_dir)
+    except OSError:
+        version += '-confused'  # This should never happen.
+    else:
+        if p.wait() == 1:
+            version += '-dirty'
+    return version
+
+
+def get_static_version():
+    """Return the version as recorded inside a file."""
+    try:
+        with open(STATIC_VERSION_FILE) as f:
+            contents = f.read()
+            assert contents[:17] == '#define VERSION "'
+            assert contents[-2:] == '"\n'
+            return contents[17:-2]
+    except:
+        return None
+
+
+def version():
+    """Determine the version of Tinyarray.  Return it and save it in a file."""
+    git_version = get_version_from_git()
+    static_version = get_static_version()
+    if git_version is not None:
+        version = git_version
+        if static_version != git_version:
+            with open(STATIC_VERSION_FILE, 'w') as f:
+                f.write('#define VERSION "{}"\n'.format(version))
+    elif static_version is not None:
+        version = static_version
+    else:
+        version = 'unknown'
+    return version
+
 
 module = Extension('tinyarray',
                    language='c++',
@@ -9,6 +68,17 @@ module = Extension('tinyarray',
                    depends=['src/arithmetic.hh', 'src/array.hh',
                             'src/conversion.hh', 'src/functions.hh'])
 
-setup (name = 'tinyarray',
-       version = '0.0',
-       ext_modules = [module])
+
+def main():
+    setup(name='tinyarray',
+          version=version(),
+          author='Christoph Groth et al.',
+          author_email='christoph.groth@cea.fr',
+          description="A subset of NumPy optimized for small immutable arrays.",
+          url="http://kwant-project.org/tinyarray/",
+          license="BSD",
+          ext_modules=[module])
+
+
+if __name__ == '__main__':
+    main()
