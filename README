@@ -1,26 +1,43 @@
-This is tinyarray version 0.0
-=============================
+=========
+Tinyarray
+=========
 
-Copyright 2012 Commissariat à l'énergie atomique et aux énergies alternatives.
-All rights reserved.
-
-Written by Christoph Groth <christoph.groth@cea.fr>.
-
-
-License information
--------------------
-
-This software (tinyarray) is NOT TO BE DISTRIBUTED, neither as part nor as a
-whole except with explicit permission of the author.
+Tinyarray is an numerical array package for Python.  It implements a basic
+subset of NumPy's functionality in a way optimized for small arrays, both in
+terms memory usage of runtime.  For small arrays, speedups of 3 to 35 times are
+measured compared to NumPy.  Unlike NumPy arrays, tinyarrays are immutable and
+thus can be used as dictionary keys.
 
 
-Instructions
+License
+-------
+
+Tinyarray is licensed under the "simplified BSD License".  The license is
+included in the file LICENSE in this directory.
+
+
+Authors
+-------
+
+The principal developer of Tinyarray is Christoph W. Groth (SPSMS-INAC-CEA
+Grenoble).  His contributions are part of his work at `CEA <http://cea.fr>`_,
+the French Commissariat à l'énergie atomique et aux énergies alternatives.
+
+The author can be reached at christoph.groth@cea.fr.
+
+Other people that have contributed to Tinyarray include
+
+* Michael Wimmer (Leiden University)
+* Joseph Weston (SPSMS-INAC-CEA Grenoble)
+
+To find out who exactly wrote a certain part of Tinyarray, please use the
+"blame" feature of `git <http://git-scm.com/>`_, the version control system.
+
+
+Installation
 ------------
 
-tinyarray implements a subset of NumPy's functionality in a way optimized for
-small arrays, both in terms memory usage of runtime.  For small arrays,
-speedups of 3 to 35 times are measured compared to NumPy.  Unlike NumPy arrays,
-tinyarrays are immutable and thus can be used as dictionary keys.
+Tinyarray requires Python 2.6 or 2.7.
 
 To install, run
 

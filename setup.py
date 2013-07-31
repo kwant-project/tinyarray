@@ -1,9 +1,18 @@
 #!/usr/bin/env python
 
+# Copyright 2012-2013 Tinyarray authors.
+#
+# This file is part of Tinyarray.  It is subject to the license terms in the
+# LICENSE file found in the top-level directory of this distribution and at
+# http://kwant-project.org/tinyarray/license.  A list of Tinyarray authors can
+# be found in the README file at the top-level directory of this distribution
+# and at http://kwant-project.org/tinyarray.
+
 import subprocess
 import os
 from distutils.core import setup, Extension
 
+README_FILE = 'README'
 STATIC_VERSION_FILE = 'src/version.hh'
 
 tinyarray_dir = os.path.dirname(os.path.abspath(__file__))
@@ -61,6 +70,25 @@ def version():
     return version
 
 
+def long_description():
+    text = []
+    skip = True
+    try:
+        with open(README_FILE) as f:
+            for line in f:
+                if line == "\n":
+                    if skip:
+                        skip = False
+                        continue
+                    else:
+                        break
+                if not skip:
+                    text.append(line.rstrip())
+    except:
+        return ''
+    return '\n'.join(text)
+
+
 module = Extension('tinyarray',
                    language='c++',
                    sources=['src/arithmetic.cc', 'src/array.cc',
@@ -72,11 +100,13 @@ module = Extension('tinyarray',
 def main():
     setup(name='tinyarray',
           version=version(),
-          author='Christoph Groth et al.',
+          author='Christoph W. Groth et al.',
           author_email='christoph.groth@cea.fr',
           description="A subset of NumPy optimized for small immutable arrays.",
+          long_description=long_description(),
           url="http://kwant-project.org/tinyarray/",
           license="BSD",
+          platforms=["Unix", "Linux", "Mac OS-X", "Windows"],
           ext_modules=[module])
 
 
