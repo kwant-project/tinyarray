@@ -326,7 +326,19 @@ PyObject *conjugate(PyObject *in_, PyObject *)
 }
 
 template <typename T>
+template <typename T>
 PyObject *reduce(PyObject *self_, PyObject*)
+{
+
+    int ndim;
+    size_t *shape;
+    self->ndim_shape(&ndim, &shape);
+    size_t size_in_bytes = calc_size(ndim, shape) * sizeof(T);
+
+    for (int i=0; i < ndim; ++i)
+
+}
+
     seq_getitem<T> // sq_item
     getitem<T>      // mp_subscript
     getbuffer<T> // bf_getbuffer
@@ -341,6 +353,7 @@ template PyObject *transpose<Complex>(PyObject*, PyObject*);
 template PyObject *conjugate<long>(PyObject*, PyObject*);
 template PyObject *conjugate<double>(PyObject*, PyObject*);
 template PyObject *conjugate<Complex>(PyObject*, PyObject*);
+
 template PyObject *reduce<long>(PyObject*, PyObject*);
 template PyObject *reduce<double>(PyObject*, PyObject*);
 template PyObject *reduce<Complex>(PyObject*, PyObject*);

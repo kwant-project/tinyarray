@@ -42,3 +42,10 @@ import sys
                     assert_equal(op(ta.array(a), ta.array(b)), op(a, b))
                     assert_equal(ta_func(a, b), np_func(a, b))
                 assert_equal(op(ta.array(a)), op(a))
+
+
+def test_pickle():
+    try:
+        import cPickle as pickle
+    except ImportError:
+        import pickle
