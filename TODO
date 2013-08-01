@@ -1,0 +1,17 @@
+* Fix float hash on 32 bit machines.
+
+* Implement missing arithmetic operations.
+
+* Implement missing comparisons.
+
+* 0-d arrays should not be sequences.  Currently there are problems with using
+  0-d arrays with PySequence_Fast.
+
+* Consider reducing the amount of templated code by having more dtype-flexible
+  code.
+
+* Merge array_from_arraylike and matrix_from_arraylike
+
+* Optimize readin_arraylike for elements that are tinyarrays.
+
+* Implement concatenate.

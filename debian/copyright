@@ -1,0 +1,8 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: tinyarray
+Upstream-Contact: Christoph Groth <christoph.groth@cea.fr>
+Source: http://www.kwant-project.org/tinyarray/
+
+Files: *
+Copyright: 2012-2013 CEA <http://cea.fr/> and others
+License: BSD-2-Clause
