@@ -10,10 +10,14 @@
 
 import subprocess
 import os
-from distutils.core import setup, Extension
+import sys
+from distutils.core import setup, Extension, Command
+from distutils.util import get_platform
+from distutils.errors import DistutilsError, DistutilsModuleError
 
 README_FILE = 'README'
 STATIC_VERSION_FILE = 'src/version.hh'
+TEST_MODULE = 'test_tinyarray.py'
 
 tinyarray_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -89,6 +93,31 @@ def long_description():
     return '\n'.join(text)
 
 
+class test(Command):
+    description = "run the unit tests"
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        try:
+            from nose.core import run
+        except ImportError:
+            raise DistutilsModuleError('nose <http://nose.readthedocs.org/> '
+                                       'is needed to run the tests')
+        self.run_command('build')
+        major, minor = sys.version_info[:2]
+        lib_dir = "build/lib.{0}-{1}.{2}".format(get_platform(), major, minor)
+        print '**************** Tests ****************'
+        if not run(argv=[__file__, '-v', '-w', lib_dir,
+                         '-w', '../../' + TEST_MODULE]):
+            raise DistutilsError('at least one of the tests failed')
+
+
 module = Extension('tinyarray',
                    language='c++',
                    sources=['src/arithmetic.cc', 'src/array.cc',
@@ -107,6 +136,7 @@ def main():
           url="http://kwant-project.org/tinyarray/",
           license="BSD",
           platforms=["Unix", "Linux", "Mac OS-X", "Windows"],
+          cmdclass={'test': test},
           ext_modules=[module])
 
 

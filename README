@@ -47,8 +47,13 @@ Tinyarray requires Python 2.6 or 2.7.
 
 To install, run::
 
-   python setup.py build
-   python setup.py install
+    python setup.py build
+    python setup.py install
+
+If `nose <http://nose.readthedocs.org/>`_ is installed, the included tests can
+be run with::
+
+    python setup.py test
 
 
 Usage

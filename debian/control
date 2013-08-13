@@ -6,6 +6,7 @@ Build-Depends: python-all-dev (>= 2.6.6-3), debhelper (>= 7)
 Standards-Version: 3.9.1
 Vcs-Git: http://git.kwant-project.org/tinyarray/
 Homepage: http://kwant-project.org/tinyarray/
+X-Python-Version: >= 2.6
 
 Package: python-tinyarray
 Architecture: any
