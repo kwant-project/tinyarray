@@ -8,5 +8,3 @@ include README_WINDOWS.txt
 include test_tinyarray.py
 include benchmark.py
 recursive-include src *.hh
-recursive-include debian *
-recursive-exclude debian *~
