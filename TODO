@@ -1,4 +1,10 @@
-* Fix float hash on 32 bit machines.
+Roughly in order of importance:
+
+* Add docstrings.
+
+* Implement indexing of sub-arrays (i.e. a[0] for a 2d-array), perhaps even slicing.
+
+* Fix float hash on 32 bit machines.  (A test fails.)
 
 * Implement missing arithmetic operations.
 
@@ -7,10 +13,7 @@
 * 0-d arrays should not be sequences.  Currently there are problems with using
   0-d arrays with PySequence_Fast.
 
-* Consider reducing the amount of templated code by having more dtype-flexible
-  code.
-
-* Merge array_from_arraylike and matrix_from_arraylike
+* Merge array_from_arraylike and matrix_from_arraylike.
 
 * Optimize readin_arraylike for elements that are tinyarrays.
 
