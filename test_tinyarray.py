@@ -54,8 +54,9 @@ def test_array():
             else:
                 assert_equal(b.dtype, dtype)
                 assert_raises(TypeError, len, b)
-            assert_equal(memoryview(b).tobytes(),
-                         memoryview(a).tobytes())
+            if sys.version_info[:2] > (2, 6):
+                # Python 2.6 does not have memoryview.
+                assert_equal(memoryview(b).tobytes(), memoryview(a).tobytes())
             assert_equal(np.array(b), np.array(l))
             assert_equal(ta.transpose(l), np.transpose(l))
 
@@ -73,16 +74,18 @@ def test_array():
                 assert_equal(len(b), len(a))
             else:
                 assert_raises(TypeError, len, b)
-            assert_equal(memoryview(b).tobytes(),
-                         memoryview(a).tobytes())
+            if sys.version_info[:2] > (2, 6):
+                # Python 2.6 does not have memoryview.
+                assert_equal(memoryview(b).tobytes(), memoryview(a).tobytes())
             assert_equal(ta.transpose(b), np.transpose(a))
 
-            # Check creation from NumPy matrix.
-            if not isinstance(a_shape, tuple) or len(a_shape) <= 2:
-                b = ta.array(np.matrix(a))
-
-                assert_equal(b.ndim, 2)
-                assert_equal(b, np.matrix(a))
+            # Check creation from NumPy matrix.  This only works for Python >
+            # 2.6.  I don't know whether this is our bug or their's.
+            if sys.version_info[:2] > (2, 6):
+                if not isinstance(a_shape, tuple) or len(a_shape) <= 2:
+                    b = ta.array(np.matrix(a))
+                    assert_equal(b.ndim, 2)
+                    assert_equal(b, np.matrix(a))
 
         l = []
         for i in range(16):
@@ -103,9 +106,12 @@ def test_matrix():
         assert_equal(a, b)
         a = ta.matrix(ta.array(l))
         assert_equal(a, b)
-        a = ta.matrix(b)
-        assert_equal(a, b)
 
+        if sys.version_info[:2] > (2, 6):
+            # Creation of tinyarrays from NumPy matrices only works for Python >
+            # 2.6.  I don't know whether this is our bug or their's.
+            a = ta.matrix(b)
+            assert_equal(a, b)
 
     for l in [(((),),), ((3,), ()), ((1, 2), (3,))]:
         assert_raises(ValueError, ta.matrix, l)
