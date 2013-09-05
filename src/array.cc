@@ -799,21 +799,37 @@ long hash(long x)
 
 long hash(double x)
 {
-    const double two_to_31st = 1L << 31;
-
+    const double two_to_31st = 2147483648.0;
     double intpart, fractpart;
+
+    if (!std::isfinite(x)) {
+        if (std::isinf(x))
+            return x < 0 ? -271828 : 314159;
+        else
+            return 0;
+    }
+
     fractpart = modf(x, &intpart);
-    if (fractpart == 0 &&
-        intpart >= std::numeric_limits<long>::min() &&
-        intpart <= std::numeric_limits<long>::max()) {
+    if (fractpart == 0) {
+        // This must return the same hash as an equal int or long.
+
+        if (intpart > std::numeric_limits<long>::max() ||
+            intpart < std::numeric_limits<long>::min()) {
+            // Convert to Python long and use its hash.
+            PyObject *plong = PyLong_FromDouble(x);
+            if (plong == NULL) return -1;
+            long result = PyObject_Hash(plong);
+            Py_DECREF(plong);
+            return result;
+        }
         return hash(long(intpart));
     }
 
     int expo;
     x = frexp(x, &expo) * two_to_31st;
-    long hipart = x;                         // Take the top 32 bits.
-    x = (x - double(hipart)) * two_to_31st;  // Get the next 32 bits.
-    return hash(hipart + (long)x + (expo << 15));
+    long hipart = x;                        // Take the top 32 bits.
+    x = (x - double(hipart)) * two_to_31st; // Get the next 32 bits.
+    return hash(hipart + long(x) + (expo << 15));
 }
 
 long hash(Complex x)

@@ -4,8 +4,6 @@ Roughly in order of importance:
 
 * Implement indexing of sub-arrays (i.e. a[0] for a 2d-array), perhaps even slicing.
 
-* Fix float hash on 32 bit machines.  (A test fails.)
-
 * Implement missing arithmetic operations.
 
 * Implement missing comparisons.

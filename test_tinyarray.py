@@ -228,14 +228,17 @@ def test_as_dict_key():
 
 
 def test_hash_equality():
-    for thing in [0, -1, -1.0, -1 + 0j, -0.3, 1.7, 0.4j,
-                -12.3j, 1 - 12.3j, 1.3 - 12.3j,
-                (), (-1,), (2,),
-                (0, 0), (-1, -1), (-5, 7), (3, -1, 0),
-                ((0, 0), (0, 0)), (((-1,),),)]:
+    for thing in [float('nan'), float('inf'), float('-inf'),
+                  0, -1, -1.0, -1 + 0j,
+                  303, -312424, 2**31 - 1, 2**31, 2**53, 2**200,
+                  -0.3, 1.7, 0.4j, -12.3j, 1 - 12.3j, 1.3 - 12.3j,
+                  (), (-1,), (2,),
+                  (0, 0), (-1, -1), (-5, 7), (3, -1, 0),
+                  ((0, 0), (0, 0)), (((-1,),),)]:
         arr = ta.array(thing)
-        assert arr == thing
-        assert not (arr != thing)
+        if thing == thing:
+            assert arr == thing
+            assert not (arr != thing)
         assert hash(arr) == hash(thing)
 
 
