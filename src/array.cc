@@ -802,12 +802,12 @@ long hash(double x)
     const double two_to_31st = 2147483648.0;
     double intpart, fractpart;
 
-    if (!std::isfinite(x)) {
-        if (std::isinf(x))
-            return x < 0 ? -271828 : 314159;
-        else
-            return 0;
-    }
+    if (x == std::numeric_limits<double>::infinity())
+        return 314159;
+    else if (x == -std::numeric_limits<double>::infinity())
+        return -271828;
+    else if (x != x)
+        return 0;               // NaN
 
     fractpart = modf(x, &intpart);
     if (fractpart == 0) {

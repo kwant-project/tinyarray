@@ -239,7 +239,7 @@ def test_hash_equality():
         if thing == thing:
             assert arr == thing
             assert not (arr != thing)
-        assert hash(arr) == hash(thing)
+        assert_equal(hash(arr), hash(thing))
 
 
 def test_broadcasting():
