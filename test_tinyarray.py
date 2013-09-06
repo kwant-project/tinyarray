@@ -336,3 +336,8 @@ def test_pickle():
         for shape in some_shapes:
             a = ta.array(make(shape, dtype))
             assert_equal(pickle.loads(pickle.dumps(a)), a)
+
+
+if __name__=='__main__':
+    import nose
+    nose.runmodule()
