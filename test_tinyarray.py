@@ -323,7 +323,13 @@ def test_unary_ufuncs():
         for x in [-987654322.5, -987654321.5, -4.51, -3.51, -2.5, -2.0,
                    -1.7, -1.5, -0.5, -0.3, -0.0, 0.0, 0.3, 0.5, 1.5, 1.7,
                    2.0, 2.5, 3.51, 4.51, 987654321.5, 987654322.5]:
-            assert_equal(ta_func(x), np_func(x))
+            if x == -0.5 and name == "round":
+                # Work around an inconsistency in NumPy: on Unix, np.round(-0.5)
+                # is -0.0, and on Windows it is 0.0, while np.ceil(-0.5) is -0.0
+                # always.
+                assert_equal(ta.round(-0.5), -0.0)
+            else:
+                assert_equal(ta_func(x), np_func(x))
 
 
 def test_pickle():
