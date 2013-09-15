@@ -142,7 +142,7 @@ module = Extension('tinyarray',
 def main():
     setup(name='tinyarray',
           version=version(),
-          author='Christoph Groth and others',
+          author='Christoph Groth (CEA) and others',
           author_email='christoph.groth@cea.fr',
           description="Arrays of numbers for Python, optimized for small sizes",
           long_description=long_description(),
