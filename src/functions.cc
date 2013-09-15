@@ -247,13 +247,6 @@ PyObject *unary_ufunc_round(PyObject *, PyObject *args)
 
 } // Anonymous namespace
 
-// TODO: once we can require gcc 4.7, use the following type aliases instead of
-// the function unary_ufunc_round which is a stopgap.
-//
-// template <typename T> using Round_nearest = Round<Nearest, T>;
-// template <typename T> using Round_floor = Round<Floor, T>;
-// template <typename T> using Round_ceil = Round<Ceil, T>;
-
 PyMethodDef functions[] = {
     {"_reconstruct", reconstruct, METH_VARARGS},
     {"zeros", zeros, METH_VARARGS},
@@ -275,9 +268,6 @@ PyMethodDef functions[] = {
     {"abs", unary_ufunc<Absolute>, METH_VARARGS},
     {"absolute", unary_ufunc<Absolute>, METH_VARARGS},
     {"conjugate", unary_ufunc<Conjugate>, METH_VARARGS},
-// {"round", unary_ufunc<Round_nearest>, METH_VARARGS},
-// {"floor", unary_ufunc<Round_floor>, METH_VARARGS},
-// {"ceil", unary_ufunc<Round_ceil>, METH_VARARGS},
     {"round", unary_ufunc_round<Nearest>, METH_VARARGS},
     {"floor", unary_ufunc_round<Floor>, METH_VARARGS},
     {"ceil", unary_ufunc_round<Ceil>, METH_VARARGS},
