@@ -621,8 +621,6 @@ PyObject *str(PyObject *obj)
     return to_pystring(self, PyObject_Str, "", "", "", "");
 }
 
-PyDoc_STRVAR(doc, "array docstring: to be written\n");
-
 Py_ssize_t len(Array_base *self)
 {
     int ndim;
@@ -1149,6 +1147,43 @@ template PyObject *seq_getitem<Complex>(PyObject*, Py_ssize_t);
 
 // **************** Public interface ****************
 
+PyDoc_STRVAR(tinyarray_doc,
+"Arrays of numbers for Python, optimized for small sizes\n\n\
+\n\
+The tinyarray module provides multi-dimensional arrays of numbers, similar to\n\
+NumPy, but with the following differences:\n\
+\n\
+* Optimized for small sizes: Compared to NumPy, common operations on small\n\
+  arrays (e.g. length 3) are up to 35 times faster, and 3 times less memory is\n\
+  used to store them.\n\
+\n\
+* Arrays are immutable and hashable, and can be thus used as dictionary keys.\n\
+\n\
+* The tinyarray module provides only the functionality that is deemed essential\n\
+  with small arrays.  For example, there exists a fast tinyarray.dot function,\n\
+  but there is no fancy indexing or slicing.\n\
+\n\
+The module's interface is a basic subset of that of NumPy and hence should be\n\
+familiar to many Python programmers.  All functions are simplified versions of\n\
+their NumPy counterparts.\n\
+\n\
+For example, arrays can be created with:\n\
+\n\
+    tinyarray.array(arraylike, [dtype])\n\
+\n\
+where arraylike can be a number, a sequence (of sequences, ...) of numbers,\n\
+a NumPy or tinyarray array, or another object supporting the buffer protocol.\n\
+The dtype parameter is optional and can only take the values int, float, and\n\
+complex.  Note that dtype is a positional argument and cannot be used as a\n\
+keyword argument.  Arrays can be also created with the functions identity,\n\
+zeros, and ones.\n\
+\n\
+Tinyarrays support iteration and indexing (currently without slicing), as well\n\
+as vectorized elementwise arithmetics.  A small number of operations like dot,\n\
+floor, and transpose are provided.  Printing works as well as pickling.\n\
+Whenever an operation is missing from Tinyarray, NumPy can be used directly,\n\
+e.g.: numpy.linalg.det(my_tinyarray).");
+
 extern "C"
 void inittinyarray()
 {
@@ -1173,7 +1208,7 @@ void inittinyarray()
     if (PyType_Ready(&Array<double>::pytype) < 0) return;
     if (PyType_Ready(&Array<Complex>::pytype) < 0) return;
 
-    PyObject *m = Py_InitModule("tinyarray", functions);
+    PyObject *m = Py_InitModule3("tinyarray", functions, tinyarray_doc);
 
     reconstruct = PyObject_GetAttrString(m, "_reconstruct");
 
@@ -1182,6 +1217,15 @@ void inittinyarray()
     Py_INCREF(&Array<Complex>::pytype);
 
     PyModule_AddObject(m, "__version__", PyString_FromString(VERSION));
+
+    PyObject *all = PyList_New(0);
+    for (const PyMethodDef *f = functions; f->ml_name; ++f) {
+        if (f->ml_name[0] == '_') continue;
+        PyObject *f_py = PyObject_GetAttrString(m, f->ml_name);
+        PyList_Append(all, PyObject_GetAttrString(f_py, "__name__"));
+        Py_DECREF(f_py);
+    }
+    PyModule_AddObject(m, "__all__", all);
 
     PyModule_AddObject(m, "ndarray_int",
                        (PyObject *)&Array<long>::pytype);
@@ -1665,7 +1709,7 @@ PyTypeObject Array<T>::pytype = {
     Py_TPFLAGS_DEFAULT |
     Py_TPFLAGS_HAVE_NEWBUFFER |
     Py_TPFLAGS_CHECKTYPES,          // tp_flags
-    doc,                            // tp_doc
+    0,                              // tp_doc
     0,                              // tp_traverse
     0,                              // tp_clear
     (richcmpfunc)richcompare,       // tp_richcompare

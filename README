@@ -1,25 +1,86 @@
-=========
 Tinyarray
 =========
 
-Tinyarray is a numerical array module for Python.  The multi-dimensional arrays
-it provides are best thought of as (possibly nested) tuples of numbers that,
-unlike Python's built-in tuples, support mathematical operations.  Like tuples,
-tinyarrays are hashable and immutable and thus can be used as dictionary keys.
-The module's interface is a subset of that of NumPy and hence should be familiar
-to many Python programmers.  Tinyarray has been heavily optimized for small
-arrays: For example, common operations on 1-d arrays of length 3 run up to 35
-times faster than with NumPy.  When storing many small arrays, memory
-consumption is reduced by a factor of 3.  In summary, Tinyarray is a more
-efficient alternative to NumPy when many separate small numerical arrays are to
-be used.
+Tinyarrays are similar to NumPy arrays, but optimized for small sizes.  Common
+operations on very small arrays are up to 35 times faster than with NumPy, and 3
+times less memory is used to store them.  Tinyarrays are useful if you need many
+small arrays of numbers, and cannot combine them into a few large ones.  (The
+resulting code is still much slower than C, but it may now be fast enough.)
+
+Unlike Python's built-in tuples, Tinyarrays support mathematical operations like
+element-wise addition and matrix multiplication.  Unlike Numpy arrays,
+Tinyarrays can be used as dictionary keys because they are hashable and
+immutable.
+
+The module's interface is a subset of that of NumPy and thus should be familiar
+to many.  Whenever an operation is missing from Tinyarray, NumPy functions can
+be used directly with Tinyarrays.
 
 
-License
--------
+Tinyarray is licensed under the "simplified BSD License".  See `<LICENSE>`_.
 
-Tinyarray is licensed under the "simplified BSD License".  The license is
-included in the file LICENSE in this directory.
+Website: http://git.kwant-project.org/tinyarray/about
+
+
+Installation
+------------
+
+Prepared packages exist for Debian, Ubuntu, Windows, and Mac OS X.  Follow the
+`installation instructions for "Kwant" <http://kwant-project/install>`_ up to
+the point where Tinyarray has been installed.
+
+``pip install tinyarray`` should also work.
+
+
+Source
+------
+
+Source tarballs are available at http://downloads.kwant-project.org/tinyarray/
+
+Clone the Git repository with ::
+
+    git clone http://git.kwant-project.org/tinyarray
+
+
+Usage example
+-------------
+
+The following example shows that in simple cases Tinyarray works just as
+NumPy. ::
+
+    from math import sin, cos, sqrt
+    import tinyarray as ta
+
+    # Make a vector.
+    v = ta.array([1.0, 2.0, 3.0])
+
+    # Make a rotation matrix.
+    alpha = 0.77
+    c, s = cos(alpha), sin(alpha)
+    rot_z = ta.array([[c, -s, 0],
+                      [s,  c, 0],
+                      [0,  0, 1]])
+
+    # Rotate the vector, normalize, and print it.
+    v = ta.dot(rot_z, v)
+    v /= sqrt(ta.dot(v, v))
+    print v
+
+
+Documentation
+-------------
+
+The module's interface is a basic subset of NumPy and hence should be familiar
+to many Python programmers.  All functions are simplified versions of their
+NumPy counterparts.  The module's docstring serves as main documentation.  To
+see it, run in Python::
+
+    import tinyarray as ta
+    help(ta)
+
+Or in the system shell::
+
+    pydoc tinyarray
 
 
 Authors
@@ -35,46 +96,3 @@ Other people that have contributed to Tinyarray include
 
 * Michael Wimmer (Leiden University)
 * Joseph Weston (SPSMS-INAC-CEA Grenoble)
-
-To find out who exactly wrote a certain part of Tinyarray, please use the
-"blame" feature of `git <http://git-scm.com/>`_, the version control system.
-
-
-Installation
-------------
-
-Tinyarray requires Python 2.6 or 2.7.
-
-To install, run::
-
-    python setup.py build
-    python setup.py install
-
-If `nose <http://nose.readthedocs.org/>`_ is installed, the included tests can
-be run with::
-
-    python setup.py test
-
-
-Usage
------
-
-At this stage, tinyarray does not provide documentation beyond this file.  See
-the module docstring for a list of all the available functions and methods.  All
-of them are simplified versions of their NumPy counterparts.
-
-For example, arrays can be created with::
-
-    tinyarray.array(arraylike, [dtype])
-
-where `arraylike` can be a nested sequence of numbers or an object supporting
-the buffer protocol.  The `dtype` parameter is optional and can only take the
-values `int`, 'float`, and `complex`.  Note that `dtype` is a positional
-argument and cannot be used as a keyword argument.  Arrays can be also created
-with the functions `identity`, `zeros`, and `ones`.
-
-Tinyarrays support iteration and indexing (currently without slicing), as well
-as vectorized elementwise arithmetics.  A small number of operations like `dot`,
-`floor`, and `transpose` are provided.  Printing works as well as pickling and
-unpickling.  Whenever an operation is missing from Tinyarray, NumPy can be used
-directly, e.g.: `numpy.linalg.det(my_tinyarray)`.

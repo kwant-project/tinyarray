@@ -121,10 +121,18 @@ PyObject *zeros(PyObject *, PyObject *args)
     return filled(args, 0);
 }
 
+PyDoc_STRVAR(zeros_doc,
+"zeros(shape, dtype="DEFAULT_DTYPE")\n\n\
+Return an array of given shape and type, filled with zeros.");
+
 PyObject *ones(PyObject *, PyObject *args)
 {
     return filled(args, 1);
 }
+
+PyDoc_STRVAR(ones_doc,
+"ones(shape, dtype="DEFAULT_DTYPE")\n\n\
+Return an array of given shape and type, filled with ones.");
 
 template <typename T>
 PyObject *identity(size_t n)
@@ -161,6 +169,10 @@ PyObject *identity(PyObject *, PyObject *args)
     return identity_dtable[int(dtype)](n);
 }
 
+PyDoc_STRVAR(identity_doc,
+"identity(n, dtype="DEFAULT_DTYPE")\n\n\
+Return an identity matrix of given size and dtype.");
+
 PyObject *array(PyObject *, PyObject *args)
 {
     PyObject *src;
@@ -170,6 +182,12 @@ PyObject *array(PyObject *, PyObject *args)
     return array_from_arraylike(src, &dtype);
 }
 
+PyDoc_STRVAR(array_doc,
+"array(object, [dtype])\n\n\
+Create an array from something array-like.\n\
+Valid inputs are numbers, sequences (of sequences, ...) of numbers, NumPy\n\
+and tinyarray arrays, and objects supporting the buffer protocol.");
+
 PyObject *matrix(PyObject *, PyObject *args)
 {
     PyObject *src;
@@ -178,6 +196,12 @@ PyObject *matrix(PyObject *, PyObject *args)
         return 0;
     return matrix_from_arraylike(src, &dtype);
 }
+
+PyDoc_STRVAR(matrix_doc,
+"matrix(object, [dtype])\n\n\
+Create an 2-d array from something array-like.\n\
+Valid inputs are the same as for array(), however the input is promoted to 2-d.\n\
+A ``ValueError`` is raised if the input has more than 2 dimensions.");
 
 PyObject *(*transpose_dtable[])(PyObject*, PyObject *) =
   DTYPE_DISPATCH(transpose);
@@ -192,12 +216,24 @@ PyObject *transpose(PyObject *, PyObject *args)
     return transpose_dtable[int(dtype)](a, 0);
 }
 
+PyDoc_STRVAR(transpose_doc,
+"transpose(a)\n\n\
+Return a copy of the given array with reversed order of dimensions.");
+
 PyObject *dot(PyObject *, PyObject *args)
 {
     PyObject *a, *b;
     if (!PyArg_ParseTuple(args, "OO", &a, &b)) return 0;
     return dot_product(a, b);
 }
+
+PyDoc_STRVAR(dot_doc,
+"dot(a, b)\n\n\
+Return the dot product of two arrays.\n\n\
+For 2-d arrays, the dot product is equivalent to matrix multiplication; for 1-d\n\
+arrays, to a scalar product of vectors.  In the general case, it is equivalent\n\
+to a sum over the last axis of a and the second-to-last of b, e.g.::\n\n\
+    dot(a, b)[i,j,k,m] = sum(a[i,j,:] * b[k,:,m])");
 
 template <template <typename> class Op>
 PyObject *binary_ufunc(PyObject *, PyObject *args)
@@ -245,32 +281,39 @@ PyObject *unary_ufunc_round(PyObject *, PyObject *args)
     return result;
 }
 
+PyDoc_STRVAR(binary_ufunc_doc,
+"Operates elementwise on two arrays, returns an array of the same shape.");
+
+PyDoc_STRVAR(unary_ufunc_doc,
+"Operates elementwise on an array, returns an array of the same shape.");
+
 } // Anonymous namespace
 
 PyMethodDef functions[] = {
     {"_reconstruct", reconstruct, METH_VARARGS},
-    {"zeros", zeros, METH_VARARGS},
-    {"ones", ones, METH_VARARGS},
-    {"identity", identity, METH_VARARGS},
-    {"array", array, METH_VARARGS},
-    {"matrix", matrix, METH_VARARGS},
-    {"transpose", transpose, METH_VARARGS},
-    {"dot", dot, METH_VARARGS},
+    {"zeros", zeros, METH_VARARGS, zeros_doc},
+    {"ones", ones, METH_VARARGS, ones_doc},
+    {"identity", identity, METH_VARARGS, identity_doc},
+    {"array", array, METH_VARARGS, array_doc},
+    {"matrix", matrix, METH_VARARGS, matrix_doc},
+    {"transpose", transpose, METH_VARARGS, transpose_doc},
+    {"dot", dot, METH_VARARGS, dot_doc},
 
-    {"add", binary_ufunc<Add>, METH_VARARGS},
-    {"subtract", binary_ufunc<Subtract>, METH_VARARGS},
-    {"multiply", binary_ufunc<Multiply>, METH_VARARGS},
-    {"divide", binary_ufunc<Divide>, METH_VARARGS},
-    {"remainder", binary_ufunc<Remainder>, METH_VARARGS},
-    {"floor_divide", binary_ufunc<Floor_divide>, METH_VARARGS},
+    {"add", binary_ufunc<Add>, METH_VARARGS, binary_ufunc_doc},
+    {"subtract", binary_ufunc<Subtract>, METH_VARARGS, binary_ufunc_doc},
+    {"multiply", binary_ufunc<Multiply>, METH_VARARGS, binary_ufunc_doc},
+    {"divide", binary_ufunc<Divide>, METH_VARARGS, binary_ufunc_doc},
+    {"remainder", binary_ufunc<Remainder>, METH_VARARGS, binary_ufunc_doc},
+    {"floor_divide", binary_ufunc<Floor_divide>, METH_VARARGS,
+     binary_ufunc_doc},
 
-    {"negative", unary_ufunc<Negative>, METH_VARARGS},
-    {"abs", unary_ufunc<Absolute>, METH_VARARGS},
-    {"absolute", unary_ufunc<Absolute>, METH_VARARGS},
-    {"conjugate", unary_ufunc<Conjugate>, METH_VARARGS},
-    {"round", unary_ufunc_round<Nearest>, METH_VARARGS},
-    {"floor", unary_ufunc_round<Floor>, METH_VARARGS},
-    {"ceil", unary_ufunc_round<Ceil>, METH_VARARGS},
+    {"negative", unary_ufunc<Negative>, METH_VARARGS, unary_ufunc_doc},
+    {"abs", unary_ufunc<Absolute>, METH_VARARGS, unary_ufunc_doc},
+    {"absolute", unary_ufunc<Absolute>, METH_VARARGS, unary_ufunc_doc},
+    {"conjugate", unary_ufunc<Conjugate>, METH_VARARGS, unary_ufunc_doc},
+    {"round", unary_ufunc_round<Nearest>, METH_VARARGS, unary_ufunc_doc},
+    {"floor", unary_ufunc_round<Floor>, METH_VARARGS, unary_ufunc_doc},
+    {"ceil", unary_ufunc_round<Ceil>, METH_VARARGS, unary_ufunc_doc},
 
     {0, 0, 0, 0}                // Sentinel
 };

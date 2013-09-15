@@ -17,6 +17,7 @@ const int max_ndim = 16;
 // First constant must be 0, the last one must be `NONE'.
 enum Dtype {LONG = 0, DOUBLE, COMPLEX, NONE};
 const Dtype default_dtype = DOUBLE;
+#define DEFAULT_DTYPE "float"
 
 extern const char *dtype_names[];
 

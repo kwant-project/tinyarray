@@ -97,13 +97,15 @@ def long_description():
                     if skip:
                         skip = False
                         continue
-                    else:
+                    elif text[-1] == '\n':
+                        text.pop()
                         break
                 if not skip:
-                    text.append(line.rstrip())
+                    text.append(line)
     except:
         return ''
-    return '\n'.join(text)
+    text[-1] = text[-1].rstrip()
+    return ''.join(text)
 
 
 class test(Command):
