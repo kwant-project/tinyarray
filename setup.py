@@ -19,6 +19,19 @@ README_FILE = 'README'
 STATIC_VERSION_FILE = 'src/version.hh'
 TEST_MODULE = 'test_tinyarray.py'
 
+CLASSIFIERS = """\
+Development Status :: 5 - Production/Stable
+Intended Audience :: Science/Research
+Intended Audience :: Developers
+License :: OSI Approved :: BSD License
+Programming Language :: C++
+Topic :: Software Development
+Topic :: Scientific/Engineering
+Operating System :: POSIX
+Operating System :: Unix
+Operating System :: MacOS
+Operating System :: Microsoft :: Windows"""
+
 tinyarray_dir = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -134,8 +147,10 @@ def main():
           description="Arrays of numbers for Python, optimized for small sizes",
           long_description=long_description(),
           url="http://kwant-project.org/tinyarray/",
-          license="BSD",
+          download_url="http://downloads.kwant-project.org/tinyarray/",
+          license="Simplified BSD license",
           platforms=["Unix", "Linux", "Mac OS-X", "Windows"],
+          classifiers=CLASSIFIERS.split('\n'),
           cmdclass={'test': test},
           ext_modules=[module])
 
