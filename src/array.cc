@@ -2,9 +2,10 @@
 //
 // This file is part of Tinyarray.  It is subject to the license terms in the
 // LICENSE file found in the top-level directory of this distribution and at
-// http://kwant-project.org/tinyarray/license.  A list of Tinyarray authors can
-// be found in the README file at the top-level directory of this distribution
-// and at http://kwant-project.org/tinyarray.
+// http://git.kwant-project.org/tinyarray/about/LICENSE.  A list of Tinyarray
+// authors can be found in the README file at the top-level directory of this
+// distribution and at http://git.kwant-project.org/tinyarray/about/.
+
 
 #include <Python.h>
 #include <cstddef>
