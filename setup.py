@@ -148,7 +148,7 @@ def main():
           author_email='christoph.groth@cea.fr',
           description="Arrays of numbers for Python, optimized for small sizes",
           long_description=long_description(),
-          url="http://kwant-project.org/tinyarray/",
+          url="http://git.kwant-project.org/tinyarray/about/",
           download_url="http://downloads.kwant-project.org/tinyarray/",
           license="Simplified BSD license",
           platforms=["Unix", "Linux", "Mac OS-X", "Windows"],
