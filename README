@@ -35,10 +35,15 @@ Clone the Git repository with ::
 Installation
 ------------
 
-You can build from source with the usual ``python setup.py install``.  ``pip
-install tinyarray`` should also work.
+You can build from source with the usual ::
 
-Prepared packages also exist:
+    python setup.py install
+
+Another possibility is to use ::
+
+    pip install tinyarray
+
+Prepared packages exist for
 
 * Windows
 
