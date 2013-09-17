@@ -22,24 +22,56 @@ Tinyarray is licensed under the "simplified BSD License".  See `<LICENSE>`_.
 Website: http://git.kwant-project.org/tinyarray/about/
 
 
-Installation
-------------
-
-Prepared packages exist for Debian, Ubuntu, Windows, and Mac OS X.  Follow the
-`installation instructions for "Kwant" <http://kwant-project/install>`_ up to
-the point where Tinyarray has been installed.
-
-``pip install tinyarray`` should also work.
-
-
-Source
-------
+Source code
+-----------
 
 Source tarballs are available at http://downloads.kwant-project.org/tinyarray/
 
 Clone the Git repository with ::
 
     git clone http://git.kwant-project.org/tinyarray
+
+
+Installation
+------------
+
+You can build from source with the usual ``python setup.py install``.  ``pip
+install tinyarray`` should also work.
+
+Prepared packages also exist:
+
+* Windows
+
+  Use `Christoph Gohlke's installer
+  <http://www.lfd.uci.edu/~gohlke/pythonlibs/#tinyarray>`_.
+
+* Ubuntu and derivatives ::
+
+      sudo apt-add-repository ppa:kwant-project/ppa
+      sudo apt-get update
+      sudo apt-get install python-tinyarray
+
+* Debian and derivatives
+
+  1. Add the following lines to ``/etc/apt/sources.list``::
+
+         deb http://downloads.kwant-project.org/debian/ stable main
+         deb-src http://downloads.kwant-project.org/debian/ stable main
+
+  2. (Optional) Add the OpenPGP key used to sign the repositories by executing::
+
+         sudo apt-key adv --keyserver pgp.mit.edu --recv-key C3F147F5980F3535
+
+  3. Update the package data, and install::
+
+         sudo apt-get update
+         sudo apt-get install python-tinyarray
+
+* Mac OS X
+
+  Follow the `instructions for installing "Kwant"
+  <http://kwant-project.org/install#mac-os-x>`_ but install
+  ``py27-tinyarray`` instead of ``py27-kwant`` etc.
 
 
 Usage example
