@@ -9,6 +9,11 @@
 #ifndef CONVERSION_HH
 #define CONVERSION_HH
 
+#if PY_MAJOR_VERSION >= 3
+    #define PyInt_FromLong PyLong_FromLong
+    #define PyInt_AsLong PyLong_AsLong
+#endif
+
 #include <complex>
 typedef std::complex<double> Complex;
 

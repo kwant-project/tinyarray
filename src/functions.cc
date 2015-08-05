@@ -17,8 +17,12 @@ int dtype_converter(const PyObject *ob, Dtype *dtype)
 {
     if (ob == Py_None) {
         *dtype = default_dtype;
+    #if PY_MAJOR_VERSION < 3
     } else if (ob == (PyObject *)(&PyInt_Type) ||
                ob == (PyObject *)(&PyLong_Type)) {
+    #else
+    } else if (ob == (PyObject *)(&PyLong_Type)) {
+    #endif
         *dtype = LONG;
     } else if (ob == (PyObject *)(&PyFloat_Type)) {
         *dtype = DOUBLE;
