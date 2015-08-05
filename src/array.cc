@@ -1186,7 +1186,7 @@ Whenever an operation is missing from Tinyarray, NumPy can be used directly,\n\
 e.g.: numpy.linalg.det(my_tinyarray).");
 
 extern "C"
-void inittinyarray()
+MOD_INIT_FUNC(tinyarray)
 {
     // Determine storage formats.
     bool be = is_big_endian();
@@ -1205,11 +1205,12 @@ void inittinyarray()
     else
         format_by_dtype[int(LONG)] = UNKNOWN;
 
-    if (PyType_Ready(&Array<long>::pytype) < 0) return;
-    if (PyType_Ready(&Array<double>::pytype) < 0) return;
-    if (PyType_Ready(&Array<Complex>::pytype) < 0) return;
+    if (PyType_Ready(&Array<long>::pytype) < 0) return MOD_ERROR_VAL;
+    if (PyType_Ready(&Array<double>::pytype) < 0) return MOD_ERROR_VAL;
+    if (PyType_Ready(&Array<Complex>::pytype) < 0) return MOD_ERROR_VAL;
 
-    PyObject *m = Py_InitModule3("tinyarray", functions, tinyarray_doc);
+    PyObject *m;
+    MOD_DEF(m, "tinyarray", functions, tinyarray_doc);
 
     reconstruct = PyObject_GetAttrString(m, "_reconstruct");
 
@@ -1239,15 +1240,17 @@ void inittinyarray()
     // interpreter does the same, see try_complex_special_method in
     // complexobject.c
     int_str = PyString_InternFromString("__int__");
-    if (int_str == 0) return;
+    if (int_str == 0) return MOD_ERROR_VAL;
     long_str = PyString_InternFromString("__long__");
-    if (long_str == 0) return;
+    if (long_str == 0) return MOD_ERROR_VAL;
     float_str = PyString_InternFromString("__float__");
-    if (float_str == 0) return;
+    if (float_str == 0) return MOD_ERROR_VAL;
     complex_str = PyString_InternFromString("__complex__");
-    if (complex_str == 0) return;
+    if (complex_str == 0) return MOD_ERROR_VAL;
     index_str = PyString_InternFromString("__index__");
-    if (complex_str == 0) return;
+    if (complex_str == 0) return MOD_ERROR_VAL;
+
+    return MOD_SUCCESS_VAL(m);
 }
 
 int load_index_seq_as_long(PyObject *obj, long *out, int maxlen)
