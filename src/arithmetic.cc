@@ -365,12 +365,26 @@ struct Divide {
     }
 };
 
+#if PY_MAJOR_VERSION >=3  // disable dividing two integer tinyarrays
+
+template <>
+bool Divide<long>::operator()(long &result, long x, long y)
+{
+    PyErr_SetString(PyExc_TypeError,
+                    "True divide is not defined for integers.");
+    return 0;
+}
+
+#else
+
 template <>
 bool Divide<long>::operator()(long &result, long x, long y)
 {
     Floor_divide<long> floor_divide;
     return floor_divide(result, x, y);
 }
+
+#endif
 
 PyObject *dot_product(PyObject *a, PyObject *b)
 {
@@ -564,6 +578,52 @@ struct Floor { double operator()(double x) { return std::floor(x); } };
 
 struct Ceil { double operator()(double x) { return std::ceil(x); } };
 
+#if PY_MAJOR_VERSION >= 3
+
+template <typename T>
+PyNumberMethods Array<T>::as_number = {
+    Binary_op<Add>::apply,           // nb_add
+    Binary_op<Subtract>::apply,      // nb_subtract
+    Binary_op<Multiply>::apply,      // nb_multiply
+    Binary_op<Remainder>::apply,     // nb_remainder
+    (binaryfunc)0,                   // nb_divmod
+    (ternaryfunc)0,                  // nb_power
+    apply_unary_ufunc<Negative<T> >, // nb_negative
+    apply_unary_ufunc<Positive<T> >, // nb_positive
+    apply_unary_ufunc<Absolute<T> >, // nb_absolute
+    (inquiry)0,                      // nb_bool
+    (unaryfunc)0,                    // nb_invert
+    (binaryfunc)0,                   // nb_lshift
+    (binaryfunc)0,                   // nb_rshift
+    (binaryfunc)0,                   // nb_and
+    (binaryfunc)0,                   // nb_xor
+    (binaryfunc)0,                   // nb_or
+    (unaryfunc)0,                    // nb_int
+    (void*)0,                         // *nb_reserved
+    (unaryfunc)0,                    // nb_float
+
+    (binaryfunc)0,                   // nb_inplace_add
+    (binaryfunc)0,                   // nb_inplace_subtract
+    (binaryfunc)0,                   // nb_inplace_multiply
+    (binaryfunc)0,                   // nb_inplace_remainder
+    (ternaryfunc)0,                  // nb_inplace_power
+    (binaryfunc)0,                   // nb_inplace_lshift
+    (binaryfunc)0,                   // nb_inplace_rshift
+    (binaryfunc)0,                   // nb_inplace_and
+    (binaryfunc)0,                   // nb_inplace_xor
+    (binaryfunc)0,                   // nb_inplace_or
+
+    Binary_op<Floor_divide>::apply,  // nb_floor_divide
+    //True divide disabled for longs
+    Binary_op<Divide>::apply,        // nb_true_divide
+    (binaryfunc)0,                   // nb_inplace_floor_divide
+    (binaryfunc)0,                   // nb_inplace_true_divide
+
+    (unaryfunc)0                     // nb_index
+};
+
+#else  // Python 2.x
+
 template <typename T>
 PyNumberMethods Array<T>::as_number = {
     Binary_op<Add>::apply,           // nb_add
@@ -609,6 +669,8 @@ PyNumberMethods Array<T>::as_number = {
 
     (unaryfunc)0                     // nb_index
 };
+
+#endif  // Python 3 check
 
 // Explicit instantiations.
 template PyNumberMethods Array<long>::as_number;
