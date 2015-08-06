@@ -1671,6 +1671,13 @@ PyMappingMethods Array<T>::as_mapping = {
     getitem<T>      // mp_subscript
 };
 
+#if PY_MAJOR_VERSION >= 3
+template <typename T>
+PyBufferProcs Array<T>::as_buffer = {
+    getbuffer<T>,  // bf_getbuffer
+    0,             // bf_releasebuffer
+};
+#else
 template <typename T>
 PyBufferProcs Array<T>::as_buffer = {
     // We only support the new buffer protocol.
@@ -1680,6 +1687,7 @@ PyBufferProcs Array<T>::as_buffer = {
     0,                          // bf_getcharbuffer
     getbuffer<T> // bf_getbuffer
 };
+#endif
 
 template <typename T>
 PyMethodDef Array<T>::methods[] = {
