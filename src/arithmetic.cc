@@ -357,6 +357,48 @@ PyObject *Binary_op<Floor_divide>::ufunc<Complex>(int, const size_t*,
     return 0;
 }
 
+#if PY_MAJOR_VERSION >= 3
+template <>
+template <>
+PyObject *Binary_op<Divide>::ufunc<long>(int ndim, const size_t *shape,
+                                         PyObject *a_, const ptrdiff_t *hops_a,
+                                         PyObject *b_, const ptrdiff_t *hops_b)
+{
+    typedef long I;
+    typedef double O;
+
+    assert(Array<I>::check_exact(a_)); Array<I> *a = (Array<I>*)a_;
+    assert(Array<I>::check_exact(b_)); Array<I> *b = (Array<I>*)b_;
+    Array<O> *temp_a = 0;
+    Array<O> *temp_b = 0;
+    PyObject* result = 0;
+    I *src;
+    O *dest;
+    size_t size;
+
+    // convert arrays to double, required by semantics of true divide
+    temp_a = Array<O>::make(ndim, shape, &size);
+    if(!temp_a) goto end;
+    src = a->data();
+    dest = temp_a->data();
+    for (size_t i = 0; i < size; ++i) dest[i] = src[i];
+
+    temp_b = Array<O>::make(ndim, shape, &size);
+    if(!temp_b) goto end;
+    src = b->data();
+    dest = temp_b->data();
+    for (size_t i = 0; i < size; ++i) dest[i] = src[i];
+
+    result = Binary_op<Divide>::ufunc<O>(ndim, shape,
+                                        (PyObject*)temp_a, hops_a,
+                                        (PyObject*)temp_b, hops_b);
+end:
+    if(temp_a) Py_DECREF(temp_a);
+    if(temp_b) Py_DECREF(temp_b);
+    return result;
+}
+#endif
+
 template <typename T>
 struct Divide {
     bool operator()(T &result, T x, T y) {
@@ -365,25 +407,15 @@ struct Divide {
     }
 };
 
-#if PY_MAJOR_VERSION >=3  // disable dividing two integer tinyarrays
-
-template <>
-bool Divide<long>::operator()(long &result, long x, long y)
-{
-    PyErr_SetString(PyExc_TypeError,
-                    "True divide is not defined for integers.");
-    return 0;
-}
-
-#else
-
+#if PY_MAJOR_VERSION < 3
+// not needed in Python 3.x as Array<long> will be converted
+// to Array<double> for true-division
 template <>
 bool Divide<long>::operator()(long &result, long x, long y)
 {
     Floor_divide<long> floor_divide;
     return floor_divide(result, x, y);
 }
-
 #endif
 
 PyObject *dot_product(PyObject *a, PyObject *b)
@@ -614,7 +646,6 @@ PyNumberMethods Array<T>::as_number = {
     (binaryfunc)0,                   // nb_inplace_or
 
     Binary_op<Floor_divide>::apply,  // nb_floor_divide
-    //True divide disabled for longs
     Binary_op<Divide>::apply,        // nb_true_divide
     (binaryfunc)0,                   // nb_inplace_floor_divide
     (binaryfunc)0,                   // nb_inplace_true_divide
