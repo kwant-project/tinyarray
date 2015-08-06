@@ -20,10 +20,12 @@ STATIC_VERSION_FILE = 'src/version.hh'
 TEST_MODULE = 'test_tinyarray.py'
 
 CLASSIFIERS = """\
-Development Status :: 5 - Production/Stable
+Development Status :: 4 - Beta
 Intended Audience :: Science/Research
 Intended Audience :: Developers
 License :: OSI Approved :: BSD License
+Programming Language :: Python :: 2
+Programming Language :: Python :: 3
 Programming Language :: C++
 Topic :: Software Development
 Topic :: Scientific/Engineering
