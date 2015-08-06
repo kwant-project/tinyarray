@@ -10,8 +10,21 @@
 #define CONVERSION_HH
 
 #if PY_MAJOR_VERSION >= 3
+    // numeric types
+    #define PyInt_Type PyLong_Type
     #define PyInt_FromLong PyLong_FromLong
     #define PyInt_AsLong PyLong_AsLong
+    #define PyInt_FromSize_t PyLong_FromSize_t
+    #define PyInt_FromSsize_t PyLong_FromSsize_t
+    #define PyInt_Check PyLong_Check
+    // string types
+    #define PyString_FromString PyUnicode_FromString
+    #define PyString_AsString PyUnicode_AsUnicode
+    #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
+    #define PyString_InternFromString PyUnicode_InternFromString
+    #define PyString_Check(p) (PyUnicode_Check(p) || PyBytes_Check(p))
+#else // Python 2.x
+    #define PyBytes_FromStringAndSize PyString_FromStringAndSize
 #endif
 
 #include <complex>

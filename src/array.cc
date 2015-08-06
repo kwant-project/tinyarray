@@ -1640,7 +1640,7 @@ PyObject *reduce(PyObject *self_, PyObject*)
     for (int i=0; i < ndim; ++i)
         PyTuple_SET_ITEM(pyshape, i, PyInt_FromSize_t(shape[i]));
     PyObject *format = PyInt_FromLong(format_by_dtype[int(get_dtype(self_))]);
-    PyObject *data = PyString_FromStringAndSize((char*)self->data(),
+    PyObject *data = PyBytes_FromStringAndSize((char*)self->data(),
                                                 size_in_bytes);
 
     PyTuple_SET_ITEM(result, 0, reconstruct);
