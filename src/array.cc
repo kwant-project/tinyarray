@@ -791,56 +791,39 @@ fail:
 // in Python.  As tinyarrays compare equal to equivalent tuples it is important
 // for the hashes to agree.  If not, there will be problems with dictionaries.
 
-long hash(long x)
+#if PY_MAJOR_VERSION >= 3
+    // the only documentation for this is in the Python sourcecode
+    #define PLUS_INFTY_HASH 314159
+    #define MINUS_INFTY_HASH -314159
+    #define HASH_TYPE Py_hash_t
+    #define HASH_IMAG _PyHASH_IMAG
+#else
+    #define PLUS_INFTY_HASH 314159
+    #define MINUS_INFTY_HASH -271828
+    #define HASH_TYPE long
+    #define HASH_IMAG 1000003L
+#endif
+
+HASH_TYPE hash(long x)
 {
     return x != -1 ? x : -2;
 }
 
-long hash(double x)
+HASH_TYPE hash(double x)
 {
-    const double two_to_31st = 2147483648.0;
-    double intpart, fractpart;
-
-    if (x == std::numeric_limits<double>::infinity())
-        return 314159;
-    else if (x == -std::numeric_limits<double>::infinity())
-        return -271828;
-    else if (x != x)
-        return 0;               // NaN
-
-    fractpart = modf(x, &intpart);
-    if (fractpart == 0) {
-        // This must return the same hash as an equal int or long.
-
-        if (intpart > std::numeric_limits<long>::max() ||
-            intpart < std::numeric_limits<long>::min()) {
-            // Convert to Python long and use its hash.
-            PyObject *plong = PyLong_FromDouble(x);
-            if (plong == NULL) return -1;
-            long result = PyObject_Hash(plong);
-            Py_DECREF(plong);
-            return result;
-        }
-        return hash(long(intpart));
-    }
-
-    int expo;
-    x = frexp(x, &expo) * two_to_31st;
-    long hipart = x;                        // Take the top 32 bits.
-    x = (x - double(hipart)) * two_to_31st; // Get the next 32 bits.
-    return hash(hipart + long(x) + (expo << 15));
+    return _Py_HashDouble(x) ;
 }
 
-long hash(Complex x)
+HASH_TYPE hash(Complex x)
 {
     // x.imag == 0  =>  hash(x.imag) == 0  =>  hash(x) == hash(x.real)
-    return hash(x.real()) + 1000003L * hash(x.imag());
+    return hash(x.real()) + HASH_IMAG * hash(x.imag());
 }
 
 // This routine calculates the hash of a multi-dimensional array.  The hash is
 // equal to that of an arrangement of nested tuples equivalent to the array.
 template <typename T>
-long hash(PyObject *obj)
+HASH_TYPE hash(PyObject *obj)
 {
     int ndim;
     size_t *shape;
