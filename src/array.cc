@@ -1689,6 +1689,14 @@ PyMethodDef Array<T>::methods[] = {
     {0, 0}                      // Sentinel
 };
 
+#if PY_MAJOR_VERSION >= 3  // don't need flags for buffers or checking types
+    static unsigned long _tp_flags = Py_TPFLAGS_DEFAULT;
+#else
+    static long _tp_flags = Py_TPFLAGS_DEFAULT |
+        Py_TPFLAGS_HAVE_NEWBUFFER |
+        Py_TPFLAGS_CHECKTYPES;
+#endif
+
 template <typename T>
 PyTypeObject Array<T>::pytype = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
@@ -1699,7 +1707,7 @@ PyTypeObject Array<T>::pytype = {
     0,                              // tp_print
     0,                              // tp_getattr
     0,                              // tp_setattr
-    0,                              // tp_compare
+    0,                              // tp_compare  (tp_reserved in Python 3.x)
     repr<T>,                        // tp_repr
     &as_number,                     // tp_as_number
     &as_sequence,                   // tp_as_sequence
@@ -1710,9 +1718,7 @@ PyTypeObject Array<T>::pytype = {
     PyObject_GenericGetAttr,        // tp_getattro
     0,                              // tp_setattro
     &as_buffer,                     // tp_as_buffer
-    Py_TPFLAGS_DEFAULT |
-    Py_TPFLAGS_HAVE_NEWBUFFER |
-    Py_TPFLAGS_CHECKTYPES,          // tp_flags
+    _tp_flags,                      // tp_flags
     0,                              // tp_doc
     0,                              // tp_traverse
     0,                              // tp_clear
