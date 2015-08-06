@@ -19,7 +19,7 @@
     #define PyInt_Check PyLong_Check
     // string types
     #define PyString_FromString PyUnicode_FromString
-    #define PyString_AsString PyUnicode_AsUnicode
+    #define PyString_AsString PyUnicode_AsUTF8
     #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
     #define PyString_InternFromString PyUnicode_InternFromString
     #define PyString_Check(p) (PyUnicode_Check(p) || PyBytes_Check(p))
