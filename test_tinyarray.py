@@ -135,12 +135,12 @@ def test_conversion():
     # Check for overflow.
     long_overflow = [1e300, np.array([1e300])]
     # This check only works for Python 2.
-    if 18446744073709551615 > sys.maxint:
+    if 18446744073709551615 > sys.maxsize:
         long_overflow.extend([np.array([18446744073709551615], np.uint64),
                               18446744073709551615])
 
     for s in long_overflow:
-        assert_raises(OverflowError, ta.array, s, long)
+        assert_raises(OverflowError, ta.array, s, int)
 
 
 def test_special_constructors():
@@ -220,11 +220,11 @@ def test_as_dict_key():
     n = 100
     d = {}
     for dtype in dtypes + dtypes:
-        for i in xrange(n):
-            d[ta.array(xrange(i), dtype)] = i
+        for i in range(n):
+            d[ta.array(range(i), dtype)] = i
         assert_equal(len(d), n)
-    for i in xrange(n):
-        assert_equal(d[tuple(xrange(i))], i)
+    for i in range(n):
+        assert_equal(d[tuple(range(i))], i)
 
 
 def test_hash_equality():
@@ -262,10 +262,17 @@ def test_promotion():
 
 def test_binary_operators():
     ops = operator
+    operations = [ops.add, ops.sub, ops.mul, ops.mod, ops.floordiv]
+    if sys.version_info[0] >= 3:
+        # Python 3 removes div in preference to truediv
+        operations.append(ops.truediv)
+    else:
+        operations.append(ops.div)
+
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-        for op in [ops.add, ops.sub, ops.mul, ops.div, ops.mod, ops.floordiv]:
+        for op in operations:
             for dtype in dtypes:
                 for shape in [(), 1, 3, (3, 2)]:
                     if dtype is complex and op in [ops.mod, ops.floordiv]:
@@ -333,10 +340,7 @@ def test_unary_ufuncs():
 
 
 def test_pickle():
-    try:
-        import cPickle as pickle
-    except ImportError:
-        import pickle
+    import pickle
 
     for dtype in dtypes:
         for shape in some_shapes:
