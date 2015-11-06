@@ -811,7 +811,9 @@ HASH_TYPE hash(long x)
 
 HASH_TYPE hash(double x)
 {
-    return _Py_HashDouble(x) ;
+    // We used to have our own implementation of this, but the extra function
+    // call is quite negligible compared to the execution time of the function.
+    return _Py_HashDouble(x);
 }
 
 HASH_TYPE hash(Complex x)
