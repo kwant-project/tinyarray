@@ -1,3 +1,4 @@
+from __future__ import print_function
 import tinyarray
 import numpy
 from time import time
@@ -14,7 +15,7 @@ def tuple_zeros(shape, dtype):
 def tuple_dot(a, b):
     return a[0] * b[0] + a[1] * b[1]
 
-class Empty(object):
+class Empty:
     pass
 
 tuples = Empty()
@@ -27,46 +28,46 @@ tuples.dot = tuple_dot
 
 def zeros(module, dtype, n=100000):
     zeros = module.zeros
-    return list(zeros(2, dtype) for i in xrange(n))
+    return list(zeros(2, dtype) for i in range(n))
 
 def make_from_list(module, dtype, n=100000):
     array = module.array
     l = [dtype(e) for e in range(3)]
-    return list(array(l) for i in xrange(n))
+    return list(array(l) for i in range(n))
 
 def dot(module, dtype, n=1000000):
     dot = module.dot
     a = module.zeros(2, dtype)
     b = module.zeros(2, dtype)
-    for i in xrange(n):
+    for i in range(n):
         c = dot(a, b)
 
 def dot_tuple(module, dtype, n=100000):
     dot = module.dot
     a = module.zeros(2, dtype)
     b = (dtype(0),) * 2
-    for i in xrange(n):
+    for i in range(n):
         c = dot(a, b)
 
 def compare(function, modules):
-    print '{0}:'.format(function.__name__)
+    print('{}:'.format(function.__name__))
     for module in modules:
         # Execute the function once to make the following timings more
         # accurate.
         function(module, int)
-        print "  {0:15}".format(module.__name__),
+        print("  {:15} ".format(module.__name__), end='')
         for dtype in (int, float, complex):
             t = time()
             try:
                 function(module, dtype)
             except:
-                print " failed  ",
+                print(" failed   ", end='')
             else:
-                print ' {0:.4f} s'.format(time() - t),
-        print
+                print(' {:.4f} s '.format(time() - t), end='')
+        print()
 
 def main():
-    print '                   int       float     complex'
+    print('                   int       float     complex')
     modules = [tuples, tinyarray, numpy]
     compare(zeros, modules)
     compare(make_from_list, modules)
