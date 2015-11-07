@@ -20,10 +20,12 @@ STATIC_VERSION_FILE = 'src/version.hh'
 TEST_MODULE = 'test_tinyarray.py'
 
 CLASSIFIERS = """\
-Development Status :: 5 - Production/Stable
+Development Status :: 4 - Beta
 Intended Audience :: Science/Research
 Intended Audience :: Developers
 License :: OSI Approved :: BSD License
+Programming Language :: Python :: 2
+Programming Language :: Python :: 3
 Programming Language :: C++
 Topic :: Software Development
 Topic :: Scientific/Engineering
@@ -44,7 +46,7 @@ def get_version_from_git():
 
     if p.wait() != 0:
         return
-    version = p.communicate()[0].strip()
+    version = p.communicate()[0].strip().decode()
 
     if version[0] == 'v':
         version = version[1:]
@@ -127,7 +129,7 @@ class test(Command):
         self.run_command('build')
         major, minor = sys.version_info[:2]
         lib_dir = "build/lib.{0}-{1}.{2}".format(get_platform(), major, minor)
-        print '**************** Tests ****************'
+        print('**************** Tests ****************')
         if not run(argv=[__file__, '-v', '-w', lib_dir,
                          '-w', '../../' + TEST_MODULE]):
             raise DistutilsError('at least one of the tests failed')

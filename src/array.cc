@@ -791,56 +791,39 @@ fail:
 // in Python.  As tinyarrays compare equal to equivalent tuples it is important
 // for the hashes to agree.  If not, there will be problems with dictionaries.
 
-long hash(long x)
+#if PY_MAJOR_VERSION >= 3
+    // the only documentation for this is in the Python sourcecode
+    #define PLUS_INFTY_HASH 314159
+    #define MINUS_INFTY_HASH -314159
+    #define HASH_TYPE Py_hash_t
+    #define HASH_IMAG _PyHASH_IMAG
+#else
+    #define PLUS_INFTY_HASH 314159
+    #define MINUS_INFTY_HASH -271828
+    #define HASH_TYPE long
+    #define HASH_IMAG 1000003L
+#endif
+
+HASH_TYPE hash(long x)
 {
     return x != -1 ? x : -2;
 }
 
-long hash(double x)
+HASH_TYPE hash(double x)
 {
-    const double two_to_31st = 2147483648.0;
-    double intpart, fractpart;
-
-    if (x == std::numeric_limits<double>::infinity())
-        return 314159;
-    else if (x == -std::numeric_limits<double>::infinity())
-        return -271828;
-    else if (x != x)
-        return 0;               // NaN
-
-    fractpart = modf(x, &intpart);
-    if (fractpart == 0) {
-        // This must return the same hash as an equal int or long.
-
-        if (intpart > std::numeric_limits<long>::max() ||
-            intpart < std::numeric_limits<long>::min()) {
-            // Convert to Python long and use its hash.
-            PyObject *plong = PyLong_FromDouble(x);
-            if (plong == NULL) return -1;
-            long result = PyObject_Hash(plong);
-            Py_DECREF(plong);
-            return result;
-        }
-        return hash(long(intpart));
-    }
-
-    int expo;
-    x = frexp(x, &expo) * two_to_31st;
-    long hipart = x;                        // Take the top 32 bits.
-    x = (x - double(hipart)) * two_to_31st; // Get the next 32 bits.
-    return hash(hipart + long(x) + (expo << 15));
+    return _Py_HashDouble(x) ;
 }
 
-long hash(Complex x)
+HASH_TYPE hash(Complex x)
 {
     // x.imag == 0  =>  hash(x.imag) == 0  =>  hash(x) == hash(x.real)
-    return hash(x.real()) + 1000003L * hash(x.imag());
+    return hash(x.real()) + HASH_IMAG * hash(x.imag());
 }
 
 // This routine calculates the hash of a multi-dimensional array.  The hash is
 // equal to that of an arrangement of nested tuples equivalent to the array.
 template <typename T>
-long hash(PyObject *obj)
+HASH_TYPE hash(PyObject *obj)
 {
     int ndim;
     size_t *shape;
@@ -1186,7 +1169,7 @@ Whenever an operation is missing from Tinyarray, NumPy can be used directly,\n\
 e.g.: numpy.linalg.det(my_tinyarray).");
 
 extern "C"
-void inittinyarray()
+MOD_INIT_FUNC(tinyarray)
 {
     // Determine storage formats.
     bool be = is_big_endian();
@@ -1205,11 +1188,12 @@ void inittinyarray()
     else
         format_by_dtype[int(LONG)] = UNKNOWN;
 
-    if (PyType_Ready(&Array<long>::pytype) < 0) return;
-    if (PyType_Ready(&Array<double>::pytype) < 0) return;
-    if (PyType_Ready(&Array<Complex>::pytype) < 0) return;
+    if (PyType_Ready(&Array<long>::pytype) < 0) return MOD_ERROR_VAL;
+    if (PyType_Ready(&Array<double>::pytype) < 0) return MOD_ERROR_VAL;
+    if (PyType_Ready(&Array<Complex>::pytype) < 0) return MOD_ERROR_VAL;
 
-    PyObject *m = Py_InitModule3("tinyarray", functions, tinyarray_doc);
+    PyObject *m;
+    MOD_DEF(m, "tinyarray", functions, tinyarray_doc);
 
     reconstruct = PyObject_GetAttrString(m, "_reconstruct");
 
@@ -1239,15 +1223,17 @@ void inittinyarray()
     // interpreter does the same, see try_complex_special_method in
     // complexobject.c
     int_str = PyString_InternFromString("__int__");
-    if (int_str == 0) return;
+    if (int_str == 0) return MOD_ERROR_VAL;
     long_str = PyString_InternFromString("__long__");
-    if (long_str == 0) return;
+    if (long_str == 0) return MOD_ERROR_VAL;
     float_str = PyString_InternFromString("__float__");
-    if (float_str == 0) return;
+    if (float_str == 0) return MOD_ERROR_VAL;
     complex_str = PyString_InternFromString("__complex__");
-    if (complex_str == 0) return;
+    if (complex_str == 0) return MOD_ERROR_VAL;
     index_str = PyString_InternFromString("__index__");
-    if (complex_str == 0) return;
+    if (complex_str == 0) return MOD_ERROR_VAL;
+
+    return MOD_SUCCESS_VAL(m);
 }
 
 int load_index_seq_as_long(PyObject *obj, long *out, int maxlen)
@@ -1637,7 +1623,7 @@ PyObject *reduce(PyObject *self_, PyObject*)
     for (int i=0; i < ndim; ++i)
         PyTuple_SET_ITEM(pyshape, i, PyInt_FromSize_t(shape[i]));
     PyObject *format = PyInt_FromLong(format_by_dtype[int(get_dtype(self_))]);
-    PyObject *data = PyString_FromStringAndSize((char*)self->data(),
+    PyObject *data = PyBytes_FromStringAndSize((char*)self->data(),
                                                 size_in_bytes);
 
     PyTuple_SET_ITEM(result, 0, reconstruct);
@@ -1668,6 +1654,13 @@ PyMappingMethods Array<T>::as_mapping = {
     getitem<T>      // mp_subscript
 };
 
+#if PY_MAJOR_VERSION >= 3
+template <typename T>
+PyBufferProcs Array<T>::as_buffer = {
+    getbuffer<T>,  // bf_getbuffer
+    0,             // bf_releasebuffer
+};
+#else
 template <typename T>
 PyBufferProcs Array<T>::as_buffer = {
     // We only support the new buffer protocol.
@@ -1677,6 +1670,7 @@ PyBufferProcs Array<T>::as_buffer = {
     0,                          // bf_getcharbuffer
     getbuffer<T> // bf_getbuffer
 };
+#endif
 
 template <typename T>
 PyMethodDef Array<T>::methods[] = {
@@ -1685,6 +1679,14 @@ PyMethodDef Array<T>::methods[] = {
     {"__reduce__", (PyCFunction)reduce<T>, METH_NOARGS},
     {0, 0}                      // Sentinel
 };
+
+#if PY_MAJOR_VERSION >= 3  // don't need flags for buffers or checking types
+    static unsigned long _tp_flags = Py_TPFLAGS_DEFAULT;
+#else
+    static long _tp_flags = Py_TPFLAGS_DEFAULT |
+        Py_TPFLAGS_HAVE_NEWBUFFER |
+        Py_TPFLAGS_CHECKTYPES;
+#endif
 
 template <typename T>
 PyTypeObject Array<T>::pytype = {
@@ -1696,7 +1698,7 @@ PyTypeObject Array<T>::pytype = {
     0,                              // tp_print
     0,                              // tp_getattr
     0,                              // tp_setattr
-    0,                              // tp_compare
+    0,                              // tp_compare  (tp_reserved in Python 3.x)
     repr<T>,                        // tp_repr
     &as_number,                     // tp_as_number
     &as_sequence,                   // tp_as_sequence
@@ -1707,9 +1709,7 @@ PyTypeObject Array<T>::pytype = {
     PyObject_GenericGetAttr,        // tp_getattro
     0,                              // tp_setattro
     &as_buffer,                     // tp_as_buffer
-    Py_TPFLAGS_DEFAULT |
-    Py_TPFLAGS_HAVE_NEWBUFFER |
-    Py_TPFLAGS_CHECKTYPES,          // tp_flags
+    _tp_flags,                      // tp_flags
     0,                              // tp_doc
     0,                              // tp_traverse
     0,                              // tp_clear

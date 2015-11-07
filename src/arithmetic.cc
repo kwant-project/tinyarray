@@ -357,6 +357,48 @@ PyObject *Binary_op<Floor_divide>::ufunc<Complex>(int, const size_t*,
     return 0;
 }
 
+#if PY_MAJOR_VERSION >= 3
+template <>
+template <>
+PyObject *Binary_op<Divide>::ufunc<long>(int ndim, const size_t *shape,
+                                         PyObject *a_, const ptrdiff_t *hops_a,
+                                         PyObject *b_, const ptrdiff_t *hops_b)
+{
+    typedef long I;
+    typedef double O;
+
+    assert(Array<I>::check_exact(a_)); Array<I> *a = (Array<I>*)a_;
+    assert(Array<I>::check_exact(b_)); Array<I> *b = (Array<I>*)b_;
+    Array<O> *temp_a = 0;
+    Array<O> *temp_b = 0;
+    PyObject* result = 0;
+    I *src;
+    O *dest;
+    size_t size;
+
+    // convert arrays to double, required by semantics of true divide
+    temp_a = Array<O>::make(ndim, shape, &size);
+    if(!temp_a) goto end;
+    src = a->data();
+    dest = temp_a->data();
+    for (size_t i = 0; i < size; ++i) dest[i] = src[i];
+
+    temp_b = Array<O>::make(ndim, shape, &size);
+    if(!temp_b) goto end;
+    src = b->data();
+    dest = temp_b->data();
+    for (size_t i = 0; i < size; ++i) dest[i] = src[i];
+
+    result = Binary_op<Divide>::ufunc<O>(ndim, shape,
+                                        (PyObject*)temp_a, hops_a,
+                                        (PyObject*)temp_b, hops_b);
+end:
+    if(temp_a) Py_DECREF(temp_a);
+    if(temp_b) Py_DECREF(temp_b);
+    return result;
+}
+#endif
+
 template <typename T>
 struct Divide {
     bool operator()(T &result, T x, T y) {
@@ -365,12 +407,16 @@ struct Divide {
     }
 };
 
+#if PY_MAJOR_VERSION < 3
+// not needed in Python 3.x as Array<long> will be converted
+// to Array<double> for true-division
 template <>
 bool Divide<long>::operator()(long &result, long x, long y)
 {
     Floor_divide<long> floor_divide;
     return floor_divide(result, x, y);
 }
+#endif
 
 PyObject *dot_product(PyObject *a, PyObject *b)
 {
@@ -564,6 +610,51 @@ struct Floor { double operator()(double x) { return std::floor(x); } };
 
 struct Ceil { double operator()(double x) { return std::ceil(x); } };
 
+#if PY_MAJOR_VERSION >= 3
+
+template <typename T>
+PyNumberMethods Array<T>::as_number = {
+    Binary_op<Add>::apply,           // nb_add
+    Binary_op<Subtract>::apply,      // nb_subtract
+    Binary_op<Multiply>::apply,      // nb_multiply
+    Binary_op<Remainder>::apply,     // nb_remainder
+    (binaryfunc)0,                   // nb_divmod
+    (ternaryfunc)0,                  // nb_power
+    apply_unary_ufunc<Negative<T> >, // nb_negative
+    apply_unary_ufunc<Positive<T> >, // nb_positive
+    apply_unary_ufunc<Absolute<T> >, // nb_absolute
+    (inquiry)0,                      // nb_bool
+    (unaryfunc)0,                    // nb_invert
+    (binaryfunc)0,                   // nb_lshift
+    (binaryfunc)0,                   // nb_rshift
+    (binaryfunc)0,                   // nb_and
+    (binaryfunc)0,                   // nb_xor
+    (binaryfunc)0,                   // nb_or
+    (unaryfunc)0,                    // nb_int
+    (void*)0,                         // *nb_reserved
+    (unaryfunc)0,                    // nb_float
+
+    (binaryfunc)0,                   // nb_inplace_add
+    (binaryfunc)0,                   // nb_inplace_subtract
+    (binaryfunc)0,                   // nb_inplace_multiply
+    (binaryfunc)0,                   // nb_inplace_remainder
+    (ternaryfunc)0,                  // nb_inplace_power
+    (binaryfunc)0,                   // nb_inplace_lshift
+    (binaryfunc)0,                   // nb_inplace_rshift
+    (binaryfunc)0,                   // nb_inplace_and
+    (binaryfunc)0,                   // nb_inplace_xor
+    (binaryfunc)0,                   // nb_inplace_or
+
+    Binary_op<Floor_divide>::apply,  // nb_floor_divide
+    Binary_op<Divide>::apply,        // nb_true_divide
+    (binaryfunc)0,                   // nb_inplace_floor_divide
+    (binaryfunc)0,                   // nb_inplace_true_divide
+
+    (unaryfunc)0                     // nb_index
+};
+
+#else  // Python 2.x
+
 template <typename T>
 PyNumberMethods Array<T>::as_number = {
     Binary_op<Add>::apply,           // nb_add
@@ -609,6 +700,8 @@ PyNumberMethods Array<T>::as_number = {
 
     (unaryfunc)0                     // nb_index
 };
+
+#endif  // Python 3 check
 
 // Explicit instantiations.
 template PyNumberMethods Array<long>::as_number;

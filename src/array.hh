@@ -55,7 +55,40 @@ protected:
     PyVarObject ob_base;
 };
 
-extern "C" void inittinyarray();
+// Python 3 support macros for module creation
+#if PY_MAJOR_VERSION >= 3
+    // module creation
+    #define MOD_DEF(ob, name, methods, doc) \
+    static struct PyModuleDef moduledef = { \
+        PyModuleDef_HEAD_INIT, \
+        name, \
+        doc, \
+        -1, \
+        methods, \
+    }; \
+    ob = PyModule_Create(&moduledef);
+    // init function declaration
+    #define MOD_INIT_FUNC(name) PyMODINIT_FUNC PyInit_##name()
+    // init function declaration for use in Array class def
+    #define MOD_INIT_FRIEND(name) PyObject* PyInit_##name()
+    // init function return values
+    #define MOD_ERROR_VAL NULL
+    #define MOD_SUCCESS_VAL(val) val
+// Python 2
+#else
+    // module creation
+    #define MOD_DEF(ob, name, methods, doc) \
+    ob = Py_InitModule3(name, methods, doc);
+    // init function declaration
+    #define MOD_INIT_FUNC(name) PyMODINIT_FUNC init##name()
+    // init function declaration for use in Array class def
+    #define MOD_INIT_FRIEND(name) void init##name()
+    // init function return values
+    #define MOD_ERROR_VAL
+    #define MOD_SUCCESS_VAL(val)
+#endif
+
+MOD_INIT_FUNC(tinyarray);
 
 template <typename T>
 class Array : public Array_base {
@@ -90,7 +123,7 @@ private:
     static PyTypeObject pytype;
 
     friend Dtype get_dtype(PyObject *obj);
-    friend void inittinyarray();
+    friend MOD_INIT_FRIEND(tinyarray);
 };
 
 int load_index_seq_as_long(PyObject *obj, long *out, int maxlen);
