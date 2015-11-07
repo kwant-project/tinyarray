@@ -7,4 +7,6 @@ include TODO
 include README_WINDOWS.txt
 include test_tinyarray.py
 include benchmark.py
+include version
 recursive-include src *.hh
+exclude src/version.hh

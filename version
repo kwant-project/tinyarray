@@ -1,0 +1,2 @@
+# This file will be overwritten by setup.py when a source distribution is made.
+__use_git__
