@@ -1,7 +1,7 @@
 *~
 *.pyc
 *.so
-/build
-/dist
-/MANIFEST
+/tinyarray.egg-info/
+/build/
+/dist/
 /src/version.hh

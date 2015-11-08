@@ -11,16 +11,15 @@
 import subprocess
 import os
 import sys
-from distutils.core import setup, Extension, Command
-from distutils.util import get_platform
+from setuptools import setup, Extension, Command
+from sysconfig import get_platform
 from distutils.errors import DistutilsError, DistutilsModuleError
-from distutils.command.build_ext import build_ext
-from distutils.command.sdist import sdist
+from setuptools.command.build_ext import build_ext
+from setuptools.command.sdist import sdist
 
 README_FILE = 'README'
 SAVED_VERSION_FILE = 'version'
 VERSION_HEADER = ['src', 'version.hh']
-TEST_MODULE = 'test_tinyarray.py'
 
 CLASSIFIERS = """\
 Development Status :: 5 - Production/Stable
@@ -154,31 +153,6 @@ class our_sdist(sdist):
                     .format(version))
 
 
-class test(Command):
-    description = "run the unit tests"
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        try:
-            from nose.core import run
-        except ImportError:
-            raise DistutilsModuleError('nose <http://nose.readthedocs.org/> '
-                                       'is needed to run the tests')
-        self.run_command('build')
-        major, minor = sys.version_info[:2]
-        lib_dir = "build/lib.{0}-{1}.{2}".format(get_platform(), major, minor)
-        print('**************** Tests ****************')
-        if not run(argv=[__file__, '-v', '-w', lib_dir,
-                         '-w', '../../' + TEST_MODULE]):
-            raise DistutilsError('at least one of the tests failed')
-
-
 module = Extension('tinyarray',
                    language='c++',
                    sources=['src/arithmetic.cc', 'src/array.cc',
@@ -200,9 +174,10 @@ def main():
           platforms=["Unix", "Linux", "Mac OS-X", "Windows"],
           classifiers=CLASSIFIERS.split('\n'),
           cmdclass={'build_ext': our_build_ext,
-                    'sdist': our_sdist,
-                    'test': test},
-          ext_modules=[module])
+                    'sdist': our_sdist},
+          ext_modules=[module],
+          test_suite = 'nose.collector',
+          setup_requires=['nose >= 1.0'])
 
 
 if __name__ == '__main__':
