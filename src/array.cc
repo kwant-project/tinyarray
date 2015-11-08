@@ -1113,9 +1113,9 @@ template PyObject *str<long>(PyObject*);
 template PyObject *str<double>(PyObject*);
 template PyObject *str<Complex>(PyObject*);
 
-template long hash<long>(PyObject*);
-template long hash<double>(PyObject*);
-template long hash<Complex>(PyObject*);
+template HASH_TYPE hash<long>(PyObject*);
+template HASH_TYPE hash<double>(PyObject*);
+template HASH_TYPE hash<Complex>(PyObject*);
 
 template int getbuffer<long>(PyObject*, Py_buffer*, int);
 template int getbuffer<double>(PyObject*, Py_buffer*, int);
