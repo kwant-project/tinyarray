@@ -1,3 +1,12 @@
+# Copyright 2012-2015 Tinyarray authors.
+#
+# This file is part of Tinyarray.  It is subject to the license terms in the
+# file LICENSE.rst found in the top-level directory of this distribution and
+# at https://gitlab.kwant-project.org/kwant/tinyarray/blob/master/LICENSE.rst.
+# A list of Tinyarray authors can be found in the README.rst file at the
+# top-level directory of this distribution and at
+# https://gitlab.kwant-project.org/kwant/tinyarray.
+
 import operator, warnings
 import tinyarray as ta
 from nose.tools import assert_raises

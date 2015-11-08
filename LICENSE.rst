@@ -2,7 +2,7 @@
 Tinyarray License
 =================
 
-Copyright 2012-2013 Christoph Groth (CEA) and others.  All rights reserved.
+Copyright 2012-2015 Christoph Groth (CEA) and others.  All rights reserved.
 
 (CEA = Commissariat à l'énergie atomique et aux énergies alternatives)
 

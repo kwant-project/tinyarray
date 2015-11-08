@@ -2,8 +2,7 @@
 # in addition to the default ones.
 
 include MANIFEST.in
-include LICENSE
-include TODO
+include LICENSE.rst
 include README_WINDOWS.txt
 include test_tinyarray.py
 include benchmark.py

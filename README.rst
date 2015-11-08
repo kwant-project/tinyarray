@@ -1,25 +1,31 @@
 Tinyarray
 =========
 
-Tinyarrays are similar to NumPy arrays, but optimized for small sizes.  Common
-operations on very small arrays are up to 35 times faster than with NumPy, and 3
-times less memory is used to store them.  Tinyarrays are useful if you need many
-small arrays of numbers, and cannot combine them into a few large ones.  (The
-resulting code is still much slower than C, but it may now be fast enough.)
+Tinyarrays are similar to NumPy arrays, but optimized for small sizes.
+Common operations on very small arrays are to 3-7 times faster than with
+NumPy (with NumPy 1.6 it used to be up to 35 times), and 3 times less
+memory is used to store them.  Tinyarrays are useful if you need many
+small arrays of numbers, and cannot combine them into a few large ones.
+(The resulting code is still much slower than C, but it may now be fast
+enough.)
 
-Unlike Python's built-in tuples, Tinyarrays support mathematical operations like
-element-wise addition and matrix multiplication.  Unlike Numpy arrays,
-Tinyarrays can be used as dictionary keys because they are hashable and
-immutable.
+Unlike Python's built-in tuples, Tinyarrays support mathematical
+operations like element-wise addition and matrix multiplication.  Unlike
+Numpy arrays, Tinyarrays can be used as dictionary keys because they are
+hashable and immutable.
 
-The module's interface is a subset of that of NumPy and thus should be familiar
-to many.  Whenever an operation is missing from Tinyarray, NumPy functions can
-be used directly with Tinyarrays.
+The module's interface is a subset of that of NumPy and thus should be
+familiar to many.  Whenever an operation is missing from Tinyarray,
+NumPy functions can be used directly with Tinyarrays.
 
 
-Tinyarray is licensed under the "simplified BSD License".  See `<LICENSE>`_.
+Tinyarray is licensed under the "simplified BSD License".  See
+`<LICENSE.rst>`_.
 
-Website: http://git.kwant-project.org/tinyarray/about/
+Website: https://gitlab.kwant-project.org/kwant/tinyarray
+
+Please report bugs here:
+https://gitlab.kwant-project.org/kwant/tinyarray/issues
 
 
 Source code
@@ -29,7 +35,7 @@ Source tarballs are available at http://downloads.kwant-project.org/tinyarray/
 
 Clone the Git repository with ::
 
-    git clone http://git.kwant-project.org/tinyarray
+    git clone https://gitlab.kwant-project.org/kwant/tinyarray.git
 
 
 Installation
@@ -37,11 +43,11 @@ Installation
 
 You can build from source with the usual ::
 
-    python setup.py install
-
-Another possibility is to use ::
-
     pip install tinyarray
+
+You can also download the source tarball (or clone it from git) and use ::
+
+    python setup.py install
 
 Prepared packages exist for
 

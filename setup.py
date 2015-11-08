@@ -3,10 +3,11 @@
 # Copyright 2012-2015 Tinyarray authors.
 #
 # This file is part of Tinyarray.  It is subject to the license terms in the
-# LICENSE file found in the top-level directory of this distribution and at
-# http://git.kwant-project.org/tinyarray/about/LICENSE.  A list of Tinyarray
-# authors can be found in the README file at the top-level directory of this
-# distribution and at http://git.kwant-project.org/tinyarray/about/.
+# file LICENSE.rst found in the top-level directory of this distribution and
+# at https://gitlab.kwant-project.org/kwant/tinyarray/blob/master/LICENSE.rst.
+# A list of Tinyarray authors can be found in the README.rst file at the
+# top-level directory of this distribution and at
+# https://gitlab.kwant-project.org/kwant/tinyarray.
 
 import subprocess
 import os
@@ -17,7 +18,7 @@ from distutils.errors import DistutilsError, DistutilsModuleError
 from setuptools.command.build_ext import build_ext
 from setuptools.command.sdist import sdist
 
-README_FILE = 'README'
+README_FILE = 'README.rst'
 SAVED_VERSION_FILE = 'version'
 VERSION_HEADER = ['src', 'version.hh']
 
@@ -168,7 +169,7 @@ def main():
           author_email='christoph.groth@cea.fr',
           description="Arrays of numbers for Python, optimized for small sizes",
           long_description=long_description(),
-          url="http://git.kwant-project.org/tinyarray/about/",
+          url="https://gitlab.kwant-project.org/kwant/tinyarray",
           download_url="http://downloads.kwant-project.org/tinyarray/",
           license="Simplified BSD license",
           platforms=["Unix", "Linux", "Mac OS-X", "Windows"],
