@@ -1,4 +1,4 @@
-// Copyright 2012-2013 Tinyarray authors.
+// Copyright 2012-2015 Tinyarray authors.
 //
 // This file is part of Tinyarray.  It is subject to the license terms in the
 // file LICENSE.rst found in the top-level directory of this distribution and
@@ -791,32 +791,67 @@ fail:
 // in Python.  As tinyarrays compare equal to equivalent tuples it is important
 // for the hashes to agree.  If not, there will be problems with dictionaries.
 
-#if PY_MAJOR_VERSION >= 3
-    // the only documentation for this is in the Python sourcecode
-    #define PLUS_INFTY_HASH 314159
-    #define MINUS_INFTY_HASH -314159
-    #define HASH_TYPE Py_hash_t
-    #define HASH_IMAG _PyHASH_IMAG
-#else
-    #define PLUS_INFTY_HASH 314159
-    #define MINUS_INFTY_HASH -271828
-    #define HASH_TYPE long
-    #define HASH_IMAG 1000003L
-#endif
-
-HASH_TYPE hash(long x)
+long old_hash(long x)
 {
     return x != -1 ? x : -2;
 }
 
-HASH_TYPE hash(double x)
+#if PY_MAJOR_VERSION >= 3
+
+// the only documentation for this is in the Python sourcecode
+typedef Py_hash_t Hash;
+const Hash HASH_IMAG = _PyHASH_IMAG;
+
+Hash hash(long x_)
+{
+    int negative = x_ < 0;
+    unsigned long x = (negative ? -x_ : x_);
+    // x is the absolute value of x_.
+
+    if (x < PyLong_BASE) {
+        if (negative)
+            return x == 1 ? -2 : -long(x);
+        else
+            return x;
+    }
+
+    // PyLong_SHIFT is 15 for 32-bit architectures and 30 for 64-bit.  So a
+    // long contains at most 3 digits.  Therefore, a starting value of n = 2 is
+    // sufficient.
+    Py_uhash_t r = 0;
+    for (int n = 2; n >= 0; --n) {
+        unsigned dig = (x >> (n * PyLong_SHIFT)) & PyLong_MASK;
+        if (r == 0 && dig == 0) continue;
+        r = ((r << PyLong_SHIFT) & _PyHASH_MODULUS) |
+            (r >> (_PyHASH_BITS - PyLong_SHIFT));
+        r += dig;
+        if (r >= _PyHASH_MODULUS) r -= _PyHASH_MODULUS;
+    }
+    if (negative) r = -r;
+    if (r == Py_uhash_t(-1)) r = Py_uhash_t(-2);
+    return r;
+}
+
+#else
+
+typedef long Hash;
+const Hash HASH_IMAG = 1000003L;
+
+Hash hash(long x)
+{
+    return old_hash(x);
+}
+
+#endif
+
+Hash hash(double x)
 {
     // We used to have our own implementation of this, but the extra function
     // call is quite negligible compared to the execution time of the function.
     return _Py_HashDouble(x);
 }
 
-HASH_TYPE hash(Complex x)
+Hash hash(Complex x)
 {
     // x.imag == 0  =>  hash(x.imag) == 0  =>  hash(x) == hash(x.real)
     return hash(x.real()) + HASH_IMAG * hash(x.imag());
@@ -825,7 +860,7 @@ HASH_TYPE hash(Complex x)
 // This routine calculates the hash of a multi-dimensional array.  The hash is
 // equal to that of an arrangement of nested tuples equivalent to the array.
 template <typename T>
-HASH_TYPE hash(PyObject *obj)
+Hash hash(PyObject *obj)
 {
     int ndim;
     size_t *shape;
@@ -856,9 +891,9 @@ HASH_TYPE hash(PyObject *obj)
                 r[d] = r_init;
             }
         } else {
-            if (d == 0) return hash(r[0] + r_addend);
+            if (d == 0) return old_hash(r[0] + r_addend);
             --d;
-            r[d] = (r[d] ^ hash(r[d+1] + r_addend)) * mult[d];
+            r[d] = (r[d] ^ old_hash(r[d+1] + r_addend)) * mult[d];
             mult[d] += mul_addend + 2 * i[d];
         }
     }
@@ -1113,9 +1148,9 @@ template PyObject *str<long>(PyObject*);
 template PyObject *str<double>(PyObject*);
 template PyObject *str<Complex>(PyObject*);
 
-template HASH_TYPE hash<long>(PyObject*);
-template HASH_TYPE hash<double>(PyObject*);
-template HASH_TYPE hash<Complex>(PyObject*);
+template Hash hash<long>(PyObject*);
+template Hash hash<double>(PyObject*);
+template Hash hash<Complex>(PyObject*);
 
 template int getbuffer<long>(PyObject*, Py_buffer*, int);
 template int getbuffer<double>(PyObject*, Py_buffer*, int);
