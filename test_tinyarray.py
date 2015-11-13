@@ -13,6 +13,7 @@ from nose.tools import assert_raises
 import numpy as np
 from numpy.testing import assert_equal, assert_almost_equal
 import sys
+import random
 
 dtypes = [int, float, complex]
 
@@ -237,18 +238,33 @@ def test_as_dict_key():
 
 
 def test_hash_equality():
-    for thing in [float('nan'), float('inf'), float('-inf'),
-                  0, -1, -1.0, -1 + 0j,
-                  303, -312424, 2**31 - 1, 2**31, 2**53, 2**200,
-                  -0.3, 1.7, 0.4j, -12.3j, 1 - 12.3j, 1.3 - 12.3j,
-                  (), (-1,), (2,),
-                  (0, 0), (-1, -1), (-5, 7), (3, -1, 0),
-                  ((0, 0), (0, 0)), (((-1,),),)]:
-        arr = ta.array(thing)
-        if thing == thing:
-            assert arr == thing
-            assert not (arr != thing)
-        assert_equal(hash(arr), hash(thing))
+    random.seed(123)
+    maxint = sys.maxsize + 1    # will be typically 2**31 or 2**63
+    int_bits = 63 if maxint > 2**32 else 31
+
+    special = [float('nan'), float('inf'), float('-inf'),
+               0, -1, -1.0, -1 + 0j,
+               303, -312424, -0.3, 1.7, 0.4j, -12.3j, 1 - 12.3j, 1.3 - 12.3j,
+               (), (-1,), (2,),
+               (0, 0), (-1, -1), (-5, 7), (3, -1, 0),
+               ((0, 1), (2, 3)), (((-1,),),)]
+    powers = [sign * (2**e + a) for sign in [1, -1] for a in [-1, 0, 1]
+              for e in range(int_bits)]
+    powers.extend([2**int_bits - 1, -2**int_bits, -2**int_bits + 1])
+    small_random_ints = (random.randrange(-2**16, 2**16) for i in range(1000))
+    large_random_ints = (random.randrange(-maxint, maxint) for i in range(1000))
+    small_random_floats = (random.gauss(0, 1) for i in range(1000))
+    large_random_floats = (random.gauss(0, 1e100) for i in range(1000))
+
+    for collection in [special, powers,
+                       small_random_ints, large_random_ints,
+                       small_random_floats, large_random_floats]:
+        for thing in collection:
+            arr = ta.array(thing)
+            if thing == thing:
+                assert arr == thing
+                assert not (arr != thing)
+            assert_equal(hash(arr), hash(thing), repr(thing))
 
 
 def test_broadcasting():
