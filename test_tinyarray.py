@@ -364,6 +364,14 @@ def test_unary_ufuncs():
                 assert_equal(ta_func(x), np_func(x))
 
 
+def test_other_scalar_types():
+    types = [np.int16, np.int32, np.int64,
+             np.float16, np.float32, np.float64]
+    for t in types:
+        a = t(123.456)
+        assert_equal(ta.array(a), np.array(a))
+
+
 def test_pickle():
     import pickle
 
