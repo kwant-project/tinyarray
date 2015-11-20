@@ -81,7 +81,7 @@ Dtype dtype_of_scalar(PyObject *obj)
 
 Dtype dtype_of_buffer(Py_buffer *view)
 {
-    char *fmt = view->format;
+    const char *fmt = view->format;
     Dtype dtype = NONE;
 
     // Currently, we only understand native endianness and alignment.
@@ -1470,7 +1470,7 @@ PyObject *matrix_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
     } else {
         // `in` is not an array.
 
-        bool find_type = (*dtype == NONE);
+        const bool find_type = (*dtype == NONE);
 
         // Try if buffer interface is supported
         Py_buffer view;
