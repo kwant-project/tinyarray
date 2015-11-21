@@ -287,11 +287,8 @@ def test_promotion():
 
 def test_binary_operators():
     ops = operator
-    operations = [ops.add, ops.sub, ops.mul, ops.mod, ops.floordiv]
-    if sys.version_info[0] >= 3:
-        # Python 3 removes div in preference to truediv
-        operations.append(ops.truediv)
-    else:
+    operations = [ops.add, ops.sub, ops.mul, ops.mod, ops.floordiv, ops.truediv]
+    if sys.version_info.major < 3:
         operations.append(ops.div)
 
     with warnings.catch_warnings():
