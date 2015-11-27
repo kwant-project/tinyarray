@@ -205,7 +205,7 @@ int examine_arraylike(PyObject *arraylike, int *ndim, size_t *shape,
             break;
         }
 
-        // See http://projects.scipy.org/numpy/ticket/2199.
+        // See https://github.com/numpy/numpy/issues/652.
         seqs[d] = PySequence_Fast(p, seq_err_msg);
         if (!seqs[d]) {--d; goto fail;}
 
@@ -296,7 +296,7 @@ int readin_arraylike(T *dest, int ndim, const size_t *shape,
             }
         }
 
-        // See http://projects.scipy.org/numpy/ticket/2199.
+        // See https://github.com/numpy/numpy/issues/652.
         seqs[d] = PySequence_Fast(*ps[d]++, seq_err_msg);
         if (!seqs[d]) {--d; goto fail;}
         len = PySequence_Fast_GET_SIZE(seqs[d]);
