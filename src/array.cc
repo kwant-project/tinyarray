@@ -348,7 +348,7 @@ PyObject *(*make_and_readin_array_dtable[])(
     DTYPE_DISPATCH(make_and_readin_array);
 
 template <typename T>
-PyObject *make_and_readin_scalar(PyObject *in, bool exact)
+PyObject *make_and_readin_scalar(PyObject *in, bool exact, int ndim = 0)
 {
     T value;
     if (exact)
@@ -358,13 +358,17 @@ PyObject *make_and_readin_scalar(PyObject *in, bool exact)
 
     if (value == T(-1) && PyErr_Occurred()) return 0;
 
-    Array<T> *result = Array<T>::make(0, 1);
+    Array<T> *result = Array<T>::make(ndim, 1);
     *result->data() = value;
+
+    size_t *shape;
+    result->ndim_shape(0, &shape);
+    for (int d = 0; d < ndim; ++d) shape[d] = 1;
 
     return (PyObject*)result;
 }
 
-PyObject *(*make_and_readin_scalar_dtable[])(PyObject*, bool) =
+PyObject *(*make_and_readin_scalar_dtable[])(PyObject*, bool, int) =
     DTYPE_DISPATCH(make_and_readin_scalar);
 
 int examine_buffer(PyObject *in, Py_buffer *view, Dtype *dtype)
@@ -1341,7 +1345,8 @@ int load_index_seq_as_ulong(PyObject *obj, unsigned long *uout,
 // If *dtype == NONE the simplest fitting dtype (at least dtype_min)
 // will be used and written back to *dtype.  Any other value of *dtype requests
 // an array of the given dtype.
-PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
+PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min,
+                               bool as_matrix)
 {
     Dtype dtype_in = get_dtype(in), dt = *dtype;
     int ndim;
@@ -1351,10 +1356,29 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
         // `in` is already an array.
         if (dt == NONE)
             dt = Dtype(std::max(int(dtype_in), int(dtype_min)));
-        if (dt == dtype_in)
-            Py_INCREF(result = in);
-        else
-            result = convert_array(dt, in, dtype_in);
+        if (as_matrix) {
+            size_t *in_shape;
+            reinterpret_cast<Array_base*>(in)->ndim_shape(&ndim, &in_shape);
+            if (ndim == 2) {
+                if (dt == dtype_in)
+                    Py_INCREF(result = in);
+                else
+                    result = convert_array(dt, in, dtype_in);
+            } else if (ndim < 2) {
+                shape[1] = (ndim == 0) ? 1 : in_shape[0];
+                shape[0] = 1;
+                result = convert_array(dt, in, dtype_in, 2, shape);
+            } else {
+                PyErr_SetString(PyExc_ValueError,
+                                "Matrix must be 2-dimensional.");
+                result = 0;
+            }
+        } else {
+            if (dt == dtype_in)
+                Py_INCREF(result = in);
+            else
+                result = convert_array(dt, in, dtype_in);
+        }
 
         *dtype = dt;
         return result;
@@ -1369,8 +1393,17 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
             if (find_type && int(dt) < int(dtype_min)) dt = dtype_min;
             for (int i = 0; i < view.ndim; i++)
                 shape[i] = view.shape[i];
-            result = make_and_readin_buffer_dtable[int(dt)](&view, view.ndim,
-                                                            shape);
+            if (as_matrix && view.ndim != 2) {
+                if (view.ndim > 2) {
+                    PyErr_SetString(PyExc_ValueError,
+                                    "Matrix must be 2-dimensional.");
+                    return 0;
+                }
+                shape[1] = (view.ndim == 0) ? 1 : shape[0];
+                shape[0] = 1;
+            }
+            result = make_and_readin_buffer_dtable[int(dt)](
+                &view, (as_matrix ? 2 : view.ndim), shape);
             PyBuffer_Release(&view);
 
             *dtype = dt;
@@ -1379,18 +1412,27 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
 
         if (examine_arraylike(in, &ndim, shape, seqs,
                               find_type ? &dt : 0) == 0) {
+            if (as_matrix && ndim != 2) {
+                if (ndim > 2) {
+                    PyErr_SetString(PyExc_ValueError,
+                                    "Matrix must be 2-dimensional.");
+                    return 0;
+                }
+                shape[1] = (ndim == 0) ? 1 : shape[0];
+                shape[0] = 1;
+            }
             if (find_type) {
                 PyObject *seqs_copy[max_ndim];
                 for (int d = 0; d < ndim; ++d)
                     Py_INCREF(seqs_copy[d] = seqs[d]);
                 if (dt == NONE) {
-                    assert(shape[ndim - 1] == 0);
+                    assert(shape[(as_matrix ? 2 : ndim) - 1] == 0);
                     dt = default_dtype;
                 }
                 if (int(dt) < int(dtype_min)) dt = dtype_min;
                 while (true) {
                     result = make_and_readin_array_dtable[int(dt)](
-                        in, ndim, ndim, shape, seqs, true);
+                        in, ndim, (as_matrix ? 2 : ndim), shape, seqs, true);
                     if (result) break;
                     dt = Dtype(int(dt) + 1);
                     if (dt == NONE) {
@@ -1405,7 +1447,7 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
             } else {
                 // A specific dtype has been requested.
                 result = make_and_readin_array_dtable[int(dt)](
-                    in, ndim, ndim, shape, seqs, false);
+                    in, ndim, (as_matrix ? 2 : ndim), shape, seqs, false);
             }
 
             *dtype = dt;
@@ -1424,122 +1466,15 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
 
         if (find_type) {
             dt = Dtype(std::max(int(dtype_in), int(dtype_min)));
-            result = make_and_readin_scalar_dtable[int(dt)](in, true);
+            result = make_and_readin_scalar_dtable[int(dt)](
+                in, true, (as_matrix ? 2 : 0));
         } else {
-            result = make_and_readin_scalar_dtable[int(dt)](in, false);
+            result = make_and_readin_scalar_dtable[int(dt)](
+                in, false, (as_matrix ? 2 : 0));
         }
 
         *dtype = dt;
         return result;
-    }
-
-    return 0;
-}
-
-// If *dtype == NONE the simplest fitting dtype (at least dtype_min)
-// will be used and written back to *dtype.  Any other value of *dtype requests
-// an array of the given dtype.
-PyObject *matrix_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min)
-{
-    Dtype dtype_in = get_dtype(in), dt = *dtype;
-    int ndim;
-    size_t shape[max_ndim];
-    PyObject *seqs[max_ndim], *result;
-    if (dtype_in != NONE) {
-        // `in` is already an array.
-        if (dt == NONE)
-            dt = Dtype(std::max(int(dtype_in), int(dtype_min)));
-        size_t *in_shape;
-        reinterpret_cast<Array_base*>(in)->ndim_shape(&ndim, &in_shape);
-        if (ndim == 2) {
-            if (dt == dtype_in)
-                Py_INCREF(result = in);
-            else
-                result = convert_array(dt, in, dtype_in);
-        } else if (ndim < 2) {
-            shape[0] = 1;
-            shape[1] = (ndim == 0) ? 1 : in_shape[0];
-            result = convert_array(dt, in, dtype_in, 2, shape);
-        } else {
-            PyErr_SetString(PyExc_ValueError, "Matrix must be 2-dimensional.");
-            result = 0;
-        }
-
-        *dtype = dt;
-        return result;
-    } else {
-        // `in` is not an array.
-
-        const bool find_type = (*dtype == NONE);
-
-        // Try if buffer interface is supported
-        Py_buffer view;
-        if (examine_buffer(in, &view, find_type ? &dt : 0) == 0) {
-            for (int i = 0; i < view.ndim; i++)
-                shape[i] = view.shape[i];
-            if (view.ndim != 2) {
-                if (view.ndim > 2) {
-                    PyErr_SetString(PyExc_ValueError,
-                                    "Matrix must be 2-dimensional.");
-                    return 0;
-                }
-                shape[1] = (view.ndim == 0) ? 1 : shape[0];
-                shape[0] = 1;
-            }
-            if (find_type && int(dt) < int(dtype_min)) dt = dtype_min;
-            result = make_and_readin_buffer_dtable[int(dt)](&view, view.ndim,
-                                                            shape);
-            PyBuffer_Release(&view);
-
-            *dtype = dt;
-            return result;
-        }
-
-        if (examine_arraylike(in, &ndim, shape, seqs,
-                              find_type ? &dt : 0) == 0) {
-            if (ndim != 2) {
-                if (ndim > 2) {
-                    PyErr_SetString(PyExc_ValueError,
-                                    "Matrix must be 2-dimensional.");
-                    return 0;
-                }
-                shape[1] = (ndim == 0) ? 1 : shape[0];
-                shape[0] = 1;
-            }
-            if (find_type) {
-                // No specific dtype has been requested.  It will be
-                // determined by the input.
-                PyObject *seqs_copy[max_ndim];
-                for (int d = 0; d < ndim; ++d)
-                    Py_INCREF(seqs_copy[d] = seqs[d]);
-                if (dt == NONE) {
-                    assert(shape[1] == 0);
-                    dt = default_dtype;
-                }
-                if (int(dt) < int(dtype_min)) dt = dtype_min;
-                while (true) {
-                    result = make_and_readin_array_dtable[int(dt)](
-                        in, ndim, 2, shape, seqs, true);
-                    if (result) break;
-                    dt = Dtype(int(dt) + 1);
-                    if (dt == NONE) {
-                        result = 0;
-                        break;
-                    }
-                    PyErr_Clear();
-                    for (int d = 0; d < ndim; ++d)
-                        Py_INCREF(seqs[d] = seqs_copy[d]);
-                }
-                for (int d = 0; d < ndim; ++d) Py_DECREF(seqs_copy[d]);
-            } else {
-                // A specific dtype has been requested.
-                result = make_and_readin_array_dtable[int(dt)](
-                    in, ndim, 2, shape, seqs, false);
-            }
-
-            *dtype = dt;
-            return result;
-        }
     }
 
     return 0;

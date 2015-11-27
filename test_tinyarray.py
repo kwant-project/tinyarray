@@ -114,8 +114,13 @@ def test_matrix():
         a = ta.matrix(l)
         b = np.matrix(l)
         assert_equal(a, b)
+        assert_equal(a.shape, b.shape)
         a = ta.matrix(ta.array(l))
         assert_equal(a, b)
+        assert_equal(a.shape, b.shape)
+        a = ta.matrix(np.array(l))
+        assert_equal(a, b)
+        assert_equal(a.shape, b.shape)
 
         if sys.version_info[:2] > (2, 6):
             # Creation of tinyarrays from NumPy matrices only works for Python >
@@ -367,6 +372,7 @@ def test_other_scalar_types():
     for t in types:
         a = t(123.456)
         assert_equal(ta.array(a), np.array(a))
+        assert_equal(ta.matrix(a), np.matrix(a))
 
 
 def test_pickle():

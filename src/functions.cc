@@ -199,7 +199,7 @@ PyObject *matrix(PyObject *, PyObject *args)
     Dtype dtype = NONE;
     if (!PyArg_ParseTuple(args, "O|O&", &src, dtype_converter, &dtype))
         return 0;
-    return matrix_from_arraylike(src, &dtype);
+    return array_from_arraylike(src, &dtype, Dtype(0), true);
 }
 
 PyDoc_STRVAR(matrix_doc,
