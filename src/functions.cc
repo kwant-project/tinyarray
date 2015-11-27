@@ -307,7 +307,11 @@ PyMethodDef functions[] = {
     {"add", binary_ufunc<Add>, METH_VARARGS, binary_ufunc_doc},
     {"subtract", binary_ufunc<Subtract>, METH_VARARGS, binary_ufunc_doc},
     {"multiply", binary_ufunc<Multiply>, METH_VARARGS, binary_ufunc_doc},
+#if PY_MAJOR_VERSION < 3
     {"divide", binary_ufunc<Divide>, METH_VARARGS, binary_ufunc_doc},
+#else
+    {"divide", binary_ufunc<True_divide>, METH_VARARGS, binary_ufunc_doc},
+#endif
     {"remainder", binary_ufunc<Remainder>, METH_VARARGS, binary_ufunc_doc},
     {"floor_divide", binary_ufunc<Floor_divide>, METH_VARARGS,
      binary_ufunc_doc},

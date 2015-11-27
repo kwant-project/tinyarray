@@ -38,6 +38,7 @@ template <typename T> struct Multiply;
 template <typename T> struct Divide;
 template <typename T> struct Remainder;
 template <typename T> struct Floor_divide;
+template <typename T> struct True_divide;
 
 
 template <typename Op> PyObject *apply_unary_ufunc(PyObject *a);

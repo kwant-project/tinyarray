@@ -358,10 +358,17 @@ PyObject *Binary_op<Floor_divide>::ufunc<Complex>(int, const size_t*,
     return 0;
 }
 
-#if PY_MAJOR_VERSION >= 3
+template <typename T>
+struct True_divide {
+    bool operator()(T &result, T x, T y) {
+        result = x / y;
+        return false;
+    }
+};
+
 template <>
 template <>
-PyObject *Binary_op<Divide>::ufunc<long>(int ndim, const size_t *shape,
+PyObject *Binary_op<True_divide>::ufunc<long>(int ndim, const size_t *shape,
                                          PyObject *a_, const ptrdiff_t *hops_a,
                                          PyObject *b_, const ptrdiff_t *hops_b)
 {
@@ -390,7 +397,7 @@ PyObject *Binary_op<Divide>::ufunc<long>(int ndim, const size_t *shape,
     dest = temp_b->data();
     for (size_t i = 0; i < size; ++i) dest[i] = src[i];
 
-    result = Binary_op<Divide>::ufunc<O>(ndim, shape,
+    result = Binary_op<True_divide>::ufunc<O>(ndim, shape,
                                         (PyObject*)temp_a, hops_a,
                                         (PyObject*)temp_b, hops_b);
 end:
@@ -398,7 +405,7 @@ end:
     if(temp_b) Py_DECREF(temp_b);
     return result;
 }
-#endif
+
 
 template <typename T>
 struct Divide {
@@ -647,7 +654,7 @@ PyNumberMethods Array<T>::as_number = {
     (binaryfunc)0,                   // nb_inplace_or
 
     Binary_op<Floor_divide>::apply,  // nb_floor_divide
-    Binary_op<Divide>::apply,        // nb_true_divide
+    Binary_op<True_divide>::apply,   // nb_true_divide
     (binaryfunc)0,                   // nb_inplace_floor_divide
     (binaryfunc)0,                   // nb_inplace_true_divide
 
@@ -695,7 +702,7 @@ PyNumberMethods Array<T>::as_number = {
     (binaryfunc)0,                   // nb_inplace_or
 
     Binary_op<Floor_divide>::apply,  // nb_floor_divide
-    (binaryfunc)0,                   // nb_true_divide
+    Binary_op<True_divide>::apply,   // nb_true_divide
     (binaryfunc)0,                   // nb_inplace_floor_divide
     (binaryfunc)0,                   // nb_inplace_true_divide
 
