@@ -165,22 +165,23 @@ const char *seq_err_msg =
     "A sequence does not support sequence protocol - "
     "this is probably due to a bug in numpy for 0-d arrays.";
 
-// This function determines the shape of an array like sequence (or sequence of
-// sequences or number) given to it as first parameter.  `dtype_guess' is the
-// dtype of the first element of the sequence.
+// This function determines the shape of an array-like sequence (of
+// sequences...) given to it as first parameter.  `dtype_guess' is the dtype of
+// the first element of the sequence.
 //
 // All four arguments after the first one are written to. `shape' and `seqs'
 // must have space for at least `max_ndim' elements.
 //
 // After successful execution `seqs' will contain `ndim' new references
 // returned by PySequence_Fast.
-int examine_arraylike(PyObject *arraylike, int *ndim, size_t *shape,
-                      PyObject **seqs, Dtype *dtype_guess)
+int examine_sequence(PyObject *arraylike, int *ndim, size_t *shape,
+                     PyObject **seqs, Dtype *dtype_guess)
 {
     PyObject *p = arraylike;
     int d = -1;
-    while (true) {
-        if (PySequence_Check(p)) {
+    assert(PySequence_Check(p));
+    for (bool is_sequence = true; ; is_sequence = PySequence_Check(p)) {
+        if (is_sequence) {
             ++d;
             if (d == ptrdiff_t(max_ndim)) {
                 // Strings are, in a way, infinitely nested sequences because
@@ -225,22 +226,13 @@ fail:
     return -1;
 }
 
-// This function is designed to be run after examine_arraylike.  It takes care
+// This function is designed to be run after examine_sequence.  It takes care
 // of releasing the references passed to it in seqs.
 template <typename T>
-int readin_arraylike(T *dest, int ndim, const size_t *shape,
-                     PyObject *arraylike, PyObject **seqs, bool exact)
+int readin_seqs(PyObject **seqs, T *dest, int ndim, const size_t *shape,
+                bool exact)
 {
-    if (ndim == 0) {
-        T value;
-        if (exact)
-            value = number_from_pyobject_exact<T>(arraylike);
-        else
-            value = number_from_pyobject<T>(arraylike);
-        if (value == T(-1) && PyErr_Occurred()) return -1;
-        *dest++ = value;
-        return 0;
-    }
+    assert(ndim > 0);
 
     // seqs is the stack of sequences being processed, all returned by
     // PySequence_Fast.  ps[d] and es[d] are the begin and end of the elements
@@ -323,9 +315,8 @@ fail:
 }
 
 template <typename T>
-PyObject *make_and_readin_array(PyObject *in, int ndim_in, int ndim_out,
-                                const size_t *shape_out, PyObject **seqs,
-                                bool exact)
+PyObject *readin_seqs_into_new(PyObject **seqs, int ndim_in, int ndim_out,
+                               const size_t *shape_out, bool exact)
 {
     Array<T> *result = Array<T>::make(ndim_out, shape_out);
     assert(ndim_out >= ndim_in);
@@ -334,8 +325,8 @@ PyObject *make_and_readin_array(PyObject *in, int ndim_in, int ndim_out,
         assert(shape_out[d] == 1);
 #endif
     if (result == 0) return 0;
-    if (readin_arraylike<T>(result->data(), ndim_in,
-                            shape_out + ndim_out - ndim_in, in, seqs, exact)
+    if (readin_seqs<T>(seqs, result->data(), ndim_in,
+                       shape_out + ndim_out - ndim_in, exact)
         == -1) {
         Py_DECREF(result);
         return 0;
@@ -343,12 +334,12 @@ PyObject *make_and_readin_array(PyObject *in, int ndim_in, int ndim_out,
     return (PyObject*)result;
 }
 
-PyObject *(*make_and_readin_array_dtable[])(
-    PyObject*, int, int, const size_t*, PyObject**, bool) =
-    DTYPE_DISPATCH(make_and_readin_array);
+PyObject *(*readin_seqs_into_new_dtable[])(
+    PyObject**, int, int, const size_t*, bool) =
+    DTYPE_DISPATCH(readin_seqs_into_new);
 
 template <typename T>
-PyObject *make_and_readin_scalar(PyObject *in, bool exact, int ndim = 0)
+PyObject *readin_scalar_into_new(PyObject *in, bool exact, int ndim = 0)
 {
     T value;
     if (exact)
@@ -368,8 +359,8 @@ PyObject *make_and_readin_scalar(PyObject *in, bool exact, int ndim = 0)
     return (PyObject*)result;
 }
 
-PyObject *(*make_and_readin_scalar_dtable[])(PyObject*, bool, int) =
-    DTYPE_DISPATCH(make_and_readin_scalar);
+PyObject *(*readin_scalar_into_new_dtable[])(PyObject*, bool, int) =
+    DTYPE_DISPATCH(readin_scalar_into_new);
 
 int examine_buffer(PyObject *in, Py_buffer *view, Dtype *dtype)
 {
@@ -1383,11 +1374,11 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min,
         *dtype = dt;
         return result;
     } else if(PySequence_Check(in)) {
-        // `in` is not an array, but is a sequence
+        // `in` is not an array, but is a sequence.
 
         bool find_type = (dt == NONE);
 
-        // Try if buffer interface is supported
+        // Try if buffer interface is supported.
         Py_buffer view;
         if (examine_buffer(in, &view, find_type ? &dt : 0) == 0) {
             if (find_type && int(dt) < int(dtype_min)) dt = dtype_min;
@@ -1410,8 +1401,8 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min,
             return result;
         }
 
-        if (examine_arraylike(in, &ndim, shape, seqs,
-                              find_type ? &dt : 0) == 0) {
+        if (examine_sequence(in, &ndim, shape, seqs,
+                             find_type ? &dt : 0) == 0) {
             if (as_matrix && ndim != 2) {
                 if (ndim > 2) {
                     PyErr_SetString(PyExc_ValueError,
@@ -1431,8 +1422,8 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min,
                 }
                 if (int(dt) < int(dtype_min)) dt = dtype_min;
                 while (true) {
-                    result = make_and_readin_array_dtable[int(dt)](
-                        in, ndim, (as_matrix ? 2 : ndim), shape, seqs, true);
+                    result = readin_seqs_into_new_dtable[int(dt)](
+                        seqs, ndim, (as_matrix ? 2 : ndim), shape, true);
                     if (result) break;
                     dt = Dtype(int(dt) + 1);
                     if (dt == NONE) {
@@ -1446,30 +1437,31 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min,
                 for (int d = 0; d < ndim; ++d) Py_DECREF(seqs_copy[d]);
             } else {
                 // A specific dtype has been requested.
-                result = make_and_readin_array_dtable[int(dt)](
-                    in, ndim, (as_matrix ? 2 : ndim), shape, seqs, false);
+                result = readin_seqs_into_new_dtable[int(dt)](
+                    seqs, ndim, (as_matrix ? 2 : ndim), shape, false);
             }
 
             *dtype = dt;
             return result;
         }
     } else {
-        // `in` is a scalar
+        // `in` is a scalar, or an invalid input.
 
         dtype_in = dtype_of_scalar(in);
         bool find_type = (dt == NONE);
 
         if (dtype_in == NONE) {
-            PyErr_SetString(PyExc_TypeError, "Expecting a number.");
+            PyErr_SetString(PyExc_TypeError,
+                            "Expecting an arraylike object or a scalar.");
             return 0;
         }
 
         if (find_type) {
             dt = Dtype(std::max(int(dtype_in), int(dtype_min)));
-            result = make_and_readin_scalar_dtable[int(dt)](
+            result = readin_scalar_into_new_dtable[int(dt)](
                 in, true, (as_matrix ? 2 : 0));
         } else {
-            result = make_and_readin_scalar_dtable[int(dt)](
+            result = readin_scalar_into_new_dtable[int(dt)](
                 in, false, (as_matrix ? 2 : 0));
         }
 
