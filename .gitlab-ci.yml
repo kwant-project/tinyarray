@@ -1,0 +1,8 @@
+python2:
+    script:
+        - python2 setup.py build_ext -i
+        - python2 test_tinyarray.py
+python3:
+    script:
+        - python3 setup.py build_ext -i
+        - python3 test_tinyarray.py
