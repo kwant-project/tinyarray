@@ -8,6 +8,7 @@
 # https://gitlab.kwant-project.org/kwant/tinyarray.
 
 import operator, warnings
+import platform
 import tinyarray as ta
 from nose.tools import assert_raises
 import numpy as np
@@ -15,7 +16,22 @@ from numpy.testing import assert_equal, assert_almost_equal
 import sys
 import random
 
+def machine_wordsize():
+    bits, _ = platform.architecture()
+    if bits == '32bit':
+        return 4
+    elif bits == '64bit':
+        return 8
+    else:
+        raise RuntimeError('unknown architecture', bits)
+
 dtypes = [int, float, complex]
+
+dtype_size = {
+    int: machine_wordsize(),
+    float: 8,
+    complex: 16
+}
 
 some_shapes = [(), 0, 1, 2, 3,
                (0, 0), (1, 0), (0, 1), (2, 2), (17, 17),
@@ -373,6 +389,27 @@ def test_other_scalar_types():
         a = t(123.456)
         assert_equal(ta.array(a), np.array(a))
         assert_equal(ta.matrix(a), np.matrix(a))
+
+
+def test_sizeof():
+    obj = object()
+    word_size = machine_wordsize()
+    for shape in some_shapes:
+        for dtype in dtypes:
+            a = ta.zeros(shape, dtype)
+            sizeof = a.__sizeof__()
+            # basic buffer size
+            n_elements = a.size
+            # if the array is > 1D then the shape is stored
+            # at the start of the buffer
+            if len(a.shape) > 1:
+                n_elements += (a.ndim * machine_wordsize() +
+                               dtype_size[dtype] - 1) // dtype_size[dtype]
+            buffer_size = n_elements * dtype_size[dtype]
+            # basic Python object has 3 pointer-sized members
+            sizeof_should_be = buffer_size + 3 * machine_wordsize()
+            print(dtype, shape)
+            assert_equal(sizeof, sizeof_should_be)
 
 
 def test_pickle():

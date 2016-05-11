@@ -105,6 +105,8 @@ public:
         }
     }
 
+    ssize_t object_size() const;
+
     static bool check_exact(PyObject *candidate) {
         return (Py_TYPE(candidate) == &pytype);
     }
@@ -156,5 +158,24 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype,
 int coerce_to_arrays(PyObject **a, PyObject **b, Dtype *coerced_dtype);
 
 template <typename T> PyObject *transpose(PyObject *in, PyObject *dummy);
+
+template <typename T>
+ssize_t Array<T>::object_size() const
+{
+    int ndim;
+    size_t *shape;
+    ndim_shape(&ndim, &shape);
+
+    // this does the same calculation as in Array<T>::make
+    Py_ssize_t size = calc_size(ndim, shape);
+    if (ndim > 1)
+        // if array is > 1D then the shape is stored in
+        // the start of the data buffer
+        size += (ndim * sizeof(size_t) + sizeof(T) - 1) / sizeof(T);
+    size = size * sizeof(T);  // element count -> byte count
+    size += Array<T>::pytype.tp_basicsize;  // add Python object overhead
+
+    return size;
+}
 
 #endif // !ARRAY_HH

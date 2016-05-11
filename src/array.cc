@@ -1563,6 +1563,13 @@ PyObject *conjugate(PyObject *in_, PyObject *)
 }
 
 template <typename T>
+PyObject *size_of(PyObject *in_, PyObject *)
+{
+    assert(Array<T>::check_exact(in_));
+    return PyInt_FromSsize_t(((const Array<T>*) in_)->object_size());
+}
+
+template <typename T>
 Array<T> *Array<T>::make(int ndim, size_t size)
 {
     Py_ssize_t ob_size = size;
@@ -1604,6 +1611,7 @@ Array<T> *Array<T>::make(int ndim, const size_t *shape, size_t *sizep)
     if (sizep) *sizep = size;
     return result;
 }
+
 
 template <typename T>
 PyObject *reduce(PyObject *self_, PyObject*)
@@ -1675,6 +1683,7 @@ template <typename T>
 PyMethodDef Array<T>::methods[] = {
     {"transpose", (PyCFunction)transpose<T>, METH_NOARGS},
     {"conjugate", (PyCFunction)conjugate<T>, METH_NOARGS},
+    {"__sizeof__", (PyCFunction)size_of<T>, METH_NOARGS},
     {"__reduce__", (PyCFunction)reduce<T>, METH_NOARGS},
     {0, 0}                      // Sentinel
 };
@@ -1742,6 +1751,10 @@ template PyObject *transpose<Complex>(PyObject*, PyObject*);
 template PyObject *conjugate<long>(PyObject*, PyObject*);
 template PyObject *conjugate<double>(PyObject*, PyObject*);
 template PyObject *conjugate<Complex>(PyObject*, PyObject*);
+
+template PyObject *size_of<long>(PyObject*, PyObject*);
+template PyObject *size_of<double>(PyObject*, PyObject*);
+template PyObject *size_of<Complex>(PyObject*, PyObject*);
 
 template PyObject *reduce<long>(PyObject*, PyObject*);
 template PyObject *reduce<double>(PyObject*, PyObject*);
