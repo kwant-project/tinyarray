@@ -38,7 +38,7 @@ extern Format format_by_dtype[];
 // following code codifies the conventions.
 class Array_base {
 public:
-    void ndim_shape(int *ndim, size_t **shape) {
+    void ndim_shape(int *ndim, size_t **shape) const {
         const Py_ssize_t ob_size = ob_base.ob_size;
         if (ob_size >= 0) {
             if (ndim) *ndim = 1;
