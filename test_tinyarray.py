@@ -9,6 +9,7 @@
 
 import operator, warnings
 import platform
+import itertools as it
 import tinyarray as ta
 from nose.tools import assert_raises
 import numpy as np
@@ -410,6 +411,37 @@ def test_sizeof():
             sizeof_should_be = buffer_size + 3 * machine_wordsize()
             print(dtype, shape)
             assert_equal(sizeof, sizeof_should_be)
+
+
+def test_comparison():
+    ops = operator
+    for op in [ops.ge, ops.gt, ops.le, ops.lt, ops.eq, ops.ne]:
+        for dtype in (int, float, complex):
+            for left, right in it.product((np.zeros, np.ones), repeat=2):
+                for shape in [(), (1,), (2,), (2, 2), (2, 2, 2), (2, 3)]:
+                    a = left(shape, dtype)
+                    b = right(shape, dtype)
+                    if dtype is complex and op not in [ops.eq, ops.ne]:
+                        # unorderable types
+                        assert_raises(TypeError, op, ta.array(a), ta.array(b))
+                    else:
+                        # passing the same object
+                        same = ta.array(a)
+                        assert_equal(op(same, same),
+                                     op(a.tolist(), a.tolist()))
+                        # passing different objects, but equal
+                        assert_equal(op(ta.array(a), ta.array(a)),
+                                     op(a.tolist(), a.tolist()))
+                        # passing different objects, not equal
+                        assert_equal(op(ta.array(a), ta.array(b)),
+                                     op(a.tolist(), b.tolist()))
+                # test different ndims and different shapes
+                for shp1, shp2 in [((2,), (2, 2)), ((2, 2), (2, 3))]:
+                    a = left(shp1, dtype)
+                    b = right(shp2, dtype)
+                    if op not in (ops.eq, ops.ne):
+                        # unorderable types
+                        assert_raises(TypeError, op, ta.array(a), ta.array(b))
 
 
 def test_pickle():
