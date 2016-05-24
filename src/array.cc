@@ -971,6 +971,14 @@ bool compare_data(int op, PyObject *a_, PyObject *b_, size_t size)
 bool (*compare_data_dtable[])(int, PyObject*, PyObject*, size_t) =
     DTYPE_DISPATCH(compare_data);
 
+#if PY_MAJOR_VERSION < 3
+    #define PY2_RAISE_TYPEERROR(msg)\
+        PyErr_SetString(PyExc_TypeError, msg);\
+        return 0
+#else
+    #define PY2_RAISE_TYPEERROR(msg)
+#endif  // PY_MAJOR_VERSION < 3
+
 PyObject *richcompare(PyObject *a, PyObject *b, int op)
 {
     PyObject *result;
@@ -991,6 +999,7 @@ PyObject *richcompare(PyObject *a, PyObject *b, int op)
     // obviate the need for `compare_scalar<Complex` to
     // handle the case of an undefined comparison
     if (dtype == COMPLEX && !equality_comparison) {
+        PY2_RAISE_TYPEERROR("unorderable type: complex()");
         result = Py_NotImplemented;
         goto decref_then_done;
     }
@@ -1000,12 +1009,13 @@ PyObject *richcompare(PyObject *a, PyObject *b, int op)
     reinterpret_cast<Array_base*>(a)->ndim_shape(&ndim_a, &shape_a);
     reinterpret_cast<Array_base*>(b)->ndim_shape(&ndim_b, &shape_b);
 
-    // TODO: enable array comparisons between arrays of differing
-    //       dimensions
+    // TODO: enable array comparisons between arrays of differing dimensions
     if (ndim_a != ndim_b) {
         if (equality_comparison) {
             goto equality_then_done;
         } else {
+            PY2_RAISE_TYPEERROR("unorderable type: only arrays with"
+                                "the same shape can be ordered");
             result = Py_NotImplemented;
             goto decref_then_done;
         }
@@ -1015,6 +1025,8 @@ PyObject *richcompare(PyObject *a, PyObject *b, int op)
             if (equality_comparison) {
                 goto equality_then_done;
             } else {
+                PY2_RAISE_TYPEERROR("unorderable type: only arrays with"
+                                    "the same shape can be ordered");
                 result = Py_NotImplemented;
                 goto decref_then_done;
             }
