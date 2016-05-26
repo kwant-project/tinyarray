@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Tinyarray authors.
+// Copyright 2012-2016 Tinyarray authors.
 //
 // This file is part of Tinyarray.  It is subject to the license terms in the
 // file LICENSE.rst found in the top-level directory of this distribution and
@@ -11,7 +11,6 @@
 #include <cstddef>
 #include <sstream>
 #include <limits>
-#include <assert.h>
 #include "array.hh"
 #include "arithmetic.hh"
 #include "functions.hh"
@@ -920,8 +919,8 @@ bool compare_scalar(const int op, const T a, const T b) {
         case Py_LT: return a < b;
         case Py_GT: return a > b;
         default:
-           assert(false);  // if we get here something is very wrong
-           return false;   // stop the compiler complaining
+           assert(false);  // If we get here something is very wrong.
+           return false;   // Stop the compiler complaining.
     }
 }
 
@@ -931,15 +930,15 @@ bool compare_scalar<Complex>(const int op, const Complex a, const Complex b) {
     switch(op){
         case Py_EQ: return a == b;
         case Py_NE: return a != b;
-        // this function is never called in a context where
-        // the following code path is run -- fall through
+        // This function is never called in a context where
+        // the following code path is run -- fall through.
         case Py_LE:
         case Py_GT:
         case Py_LT:
         case Py_GE:
         default:
            assert(false);
-           return false;   // stop the compiler complaining
+           return false;   // Stop the compiler complaining.
     }
 }
 
@@ -951,23 +950,19 @@ bool compare_data(int op, PyObject *a_, PyObject *b_, size_t size)
     assert(Array<T>::check_exact(b_)); Array<T> *b = (Array<T>*)b_;
     const T *data_a = a->data();
     const T *data_b = b->data();
-    // sequences are ordered the same as their first differing elements, see:
+    // Sequences are ordered the same as their first differing elements, see:
     // https://docs.python.org/2/reference/expressions.html#not-in
     // comparison for "multidimensional" sequences is identical to comparing
-    // the flattened sequences when they have the same shape (the present case)
+    // the flattened sequences when they have the same shape (the present case).
     size_t i = 0;
     for (; i < size; ++i)
         if (data_a[i] != data_b[i]) break;
-    // any of these operations should return true when objects are equal
+    // Any of these operations should return true when objects are equal.
     if (i == size) return ((op == Py_EQ) || (op == Py_LE) || (op == Py_GE));
     // encapsulate this into a function to handle the COMPLEX case
     return compare_scalar<T>(op, data_a[i], data_b[i]);
 }
 
-
-// don't generate dispatch table for COMPLEX datatype as it will never be used
-// in `rich_compare` (COMPLEX is unorderable), and the compiler complains about
-// generating `compare_scalar<complex>` because some operations are undefined
 bool (*compare_data_dtable[])(int, PyObject*, PyObject*, size_t) =
     DTYPE_DISPATCH(compare_data);
 
@@ -984,10 +979,10 @@ PyObject *richcompare(PyObject *a, PyObject *b, int op)
     PyObject *result;
     const bool equality_comparison = (op == Py_EQ || op == Py_NE);
 
-    // short circuit when we are comparing the same object
+    // Short circuit when we are comparing the same object.
     bool equal = (a == b);
     if (equal) {
-        // any of these operations should return true when objects are equal
+        // Any of these operations should return true when objects are equal
         equal = (op == Py_EQ) || (op == Py_GE) || (op == Py_LE);
         result = equal ? Py_True : Py_False;
         goto done;
@@ -996,8 +991,8 @@ PyObject *richcompare(PyObject *a, PyObject *b, int op)
     Dtype dtype;
     if (coerce_to_arrays(&a, &b, &dtype) < 0) return 0;
 
-    // obviate the need for `compare_scalar<Complex` to
-    // handle the case of an undefined comparison
+    // Obviate the need for `compare_scalar<Complex` to
+    // handle the case of an undefined comparison.
     if (dtype == COMPLEX && !equality_comparison) {
         PY2_RAISE_TYPEERROR("unorderable type: complex()");
         result = Py_NotImplemented;
@@ -1009,13 +1004,13 @@ PyObject *richcompare(PyObject *a, PyObject *b, int op)
     reinterpret_cast<Array_base*>(a)->ndim_shape(&ndim_a, &shape_a);
     reinterpret_cast<Array_base*>(b)->ndim_shape(&ndim_b, &shape_b);
 
-    // TODO: enable array comparisons between arrays of differing dimensions
+    // TODO: Enable array comparisons between arrays of differing dimensions.
     if (ndim_a != ndim_b) {
         if (equality_comparison) {
             goto equality_then_done;
         } else {
-            PY2_RAISE_TYPEERROR("unorderable type: only arrays with"
-                                "the same shape can be ordered");
+            PY2_RAISE_TYPEERROR("Unorderable type: only arrays with"
+                                "the same shape can be ordered.");
             result = Py_NotImplemented;
             goto decref_then_done;
         }
@@ -1025,20 +1020,20 @@ PyObject *richcompare(PyObject *a, PyObject *b, int op)
             if (equality_comparison) {
                 goto equality_then_done;
             } else {
-                PY2_RAISE_TYPEERROR("unorderable type: only arrays with"
-                                    "the same shape can be ordered");
+                PY2_RAISE_TYPEERROR("Unorderable type: only arrays with"
+                                    "the same shape can be ordered.");
                 result = Py_NotImplemented;
                 goto decref_then_done;
             }
         }
     }
 
-    // actually compare the data
+    // Actually compare the data.
     equal = compare_data_dtable[int(dtype)](op, a, b, calc_size(ndim_a, shape_a));
     result = equal ? Py_True : Py_False;
     goto decref_then_done;
 
-// non error-path exit points from this function
+// Non error-path exit points from this function
 equality_then_done:
     result = ((op == Py_EQ) == equal) ? Py_True : Py_False;
 decref_then_done:
