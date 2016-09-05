@@ -18,6 +18,20 @@ from distutils.errors import DistutilsError, DistutilsModuleError
 from setuptools.command.build_ext import build_ext
 from setuptools.command.sdist import sdist
 
+try:
+    from os.path import samefile
+except ImportError:
+    # This code path will be taken on Windows for Python < 3.2.
+    # TODO: remove this once we require Python 3.2.
+
+    def _getfinalpathname(f):
+        return os.path.normcase(os.path.abspath(f))
+
+    # This simple mockup should do in practice.
+    def samefile(f1, f2):
+        return _getfinalpathname(f1) == _getfinalpathname(f2)
+
+
 README_FILE = 'README.rst'
 SAVED_VERSION_FILE = 'version'
 VERSION_HEADER = ['src', 'version.hh']
@@ -48,7 +62,7 @@ def get_version_from_git():
         return
     if p.wait() != 0:
         return
-    if not os.path.samefile(p.communicate()[0].decode().rstrip('\n'), distr_root):
+    if not samefile(p.communicate()[0].decode().rstrip('\n'), distr_root):
         # The top-level directory of the current Git repository is not the same
         # as the root directory of the source distribution: do not extract the
         # version from Git.
