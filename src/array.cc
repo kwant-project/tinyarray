@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <sstream>
 #include <limits>
+#include <algorithm>
 #include "array.hh"
 #include "arithmetic.hh"
 #include "functions.hh"
