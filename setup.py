@@ -192,7 +192,7 @@ def main():
                     'sdist': our_sdist},
           ext_modules=[module],
           test_suite = 'nose.collector',
-          setup_requires=['nose >= 1.0'])
+          tests_require=['nose >= 1.0'])
 
 
 if __name__ == '__main__':
