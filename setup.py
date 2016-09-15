@@ -284,8 +284,8 @@ def main():
                     'sdist': our_sdist},
           ext_modules=[Extension(name, **kwargs)
                        for name, kwargs in exts.items()],
-          test_suite = 'nose.collector',
-          tests_require=['nose >= 1.0'])
+          setup_requires=['pytest-runner'],
+          tests_require=['pytest'])
 
 
 if __name__ == '__main__':
