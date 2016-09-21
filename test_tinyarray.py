@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Tinyarray authors.
+# Copyright 2012-2016 Tinyarray authors.
 #
 # This file is part of Tinyarray.  It is subject to the license terms in the
 # file LICENSE.rst found in the top-level directory of this distribution and
@@ -90,6 +90,9 @@ def test_array():
             # Here, the tinyarray is created via the buffer interface.  It's
             # possible to distinguish shape 0 from (0, 0).
             b = ta.array(a)
+
+            # This tests creation of arrays from non-C-contiguous buffers.
+            assert_equal(b, ta.array(a.transpose()).transpose())
 
             assert isinstance(repr(b), str)
             assert_equal(b.ndim, len(b.shape))
