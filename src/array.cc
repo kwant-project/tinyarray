@@ -474,6 +474,8 @@ T (*get_buffer_converter(Py_buffer *view))(const void *)
 template<typename T>
 int readin_buffer(T *dest, Py_buffer *view)
 {
+    if (view->len == 0) return 0;
+
     T (*number_from_ptr)(const void *) = get_buffer_converter<T>(view);
     if (!number_from_ptr) return -1;
 
@@ -505,6 +507,7 @@ int readin_buffer(T *dest, Py_buffer *view)
 
             for (int i = view->ndim - 1; i > 0; i--) {
                 if (indices[i] < view->shape[i]) break;
+                assert(indices[i] == view->shape[i]);
                 indices[i-1]++;
                 indices[i] = 0;
             }
@@ -516,11 +519,12 @@ int readin_buffer(T *dest, Py_buffer *view)
             *dest++ = (*number_from_ptr)(ptr);
             if (PyErr_Occurred()) return -1;
 
-            indices[view->ndim-1] ++;
+            indices[view->ndim-1]++;
             ptr += view->strides[view->ndim-1];
 
             for (int i = view->ndim - 1; i > 0; i--) {
                 if (indices[i] < view->shape[i]) break;
+                assert(indices[i] == view->shape[i]);
                 indices[i-1]++;
                 ptr += view->strides[i-1];
                 indices[i] = 0;
