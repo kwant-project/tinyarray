@@ -1,6 +1,7 @@
 *~
 *.pyc
 *.so
+build.conf
 /tinyarray.egg-info/
 /build/
 /dist/

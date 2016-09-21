@@ -9,9 +9,13 @@
 # top-level directory of this distribution and at
 # https://gitlab.kwant-project.org/kwant/tinyarray.
 
+from __future__ import print_function
+
 import subprocess
 import os
 import sys
+import collections
+import configparser
 from setuptools import setup, Extension, Command
 from sysconfig import get_platform
 from distutils.errors import DistutilsError, DistutilsModuleError
@@ -36,6 +40,93 @@ SAVED_VERSION_FILE = 'version'
 
 
 distr_root = os.path.dirname(os.path.abspath(__file__))
+
+
+def configure_extensions(exts, aliases=(), build_summary=None):
+    """Modify extension configuration according to the configuration file
+
+    `exts` must be a dict of (name, kwargs) tuples that can be used like this:
+    `Extension(name, **kwargs).  This function modifies the kwargs according to
+    the configuration file.
+
+    This function modifies `sys.argv`.
+    """
+    global config_file, config_file_present
+
+    #### Determine the name of the configuration file.
+    config_file_option = '--configfile'
+    # Handle command line option
+    for i, opt in enumerate(sys.argv):
+        if not opt.startswith(config_file_option):
+            continue
+        l, _, config_file = opt.partition('=')
+        if l != config_file_option or not config_file:
+            print('error: Expecting {}=PATH'.format(config_file_option),
+                  file=sys.stderr)
+            exit(1)
+        sys.argv.pop(i)
+        break
+    else:
+        config_file = 'build.conf'
+
+    #### Read build configuration file.
+    configs = configparser.ConfigParser()
+    try:
+        with open(config_file) as f:
+            configs.read_file(f)
+    except IOError:
+        config_file_present = False
+    else:
+        config_file_present = True
+
+    #### Handle section aliases.
+    for short, long in aliases:
+        if short in configs:
+            if long in configs:
+                print('Error: both {} and {} sections present in {}.'.format(
+                    short, long, config_file))
+                exit(1)
+            configs[long] = configs[short]
+            del configs[short]
+
+    #### Apply config from file.  Use [DEFAULT] section for missing sections.
+    defaultconfig = configs.defaults()
+    for name, kwargs in exts.items():
+        config = configs[name] if name in configs else defaultconfig
+        for key, value in config.items():
+
+            # Most, but not all, keys are lists of strings
+            if key == 'language':
+                pass
+            elif key == 'optional':
+                value = bool(int(value))
+            else:
+                value = value.split()
+
+            if key == 'define_macros':
+                value = [tuple(entry.split('=', 1))
+                         for entry in value]
+                value = [(entry[0], None) if len(entry) == 1 else entry
+                         for entry in value]
+
+            if key in kwargs:
+                msg = 'Caution: user config in file {} shadows {}.{}.'
+                if build_summary is not None:
+                    build_summary.append(msg.format(config_file, name, key))
+            kwargs[key] = value
+
+        kwargs.setdefault('depends', []).append(config_file)
+        if config is not defaultconfig:
+            del configs[name]
+
+    unknown_sections = configs.sections()
+    if unknown_sections:
+        print('Error: Unknown sections in file {}: {}'.format(
+            config_file, ', '.join(unknown_sections)))
+        exit(1)
+
+    return exts
+
 
 def get_version_from_git():
     try:
@@ -153,12 +244,15 @@ class our_sdist(sdist):
 
 
 def main():
-    exts = [Extension('tinyarray',
-                      language='c++',
-                      sources=['src/arithmetic.cc', 'src/array.cc',
-                               'src/functions.cc'],
-                      depends=['src/arithmetic.hh', 'src/array.hh',
-                               'src/conversion.hh', 'src/functions.hh'])]
+    exts = collections.OrderedDict([
+        ('tinyarray',
+         dict(language='c++',
+              sources=['src/arithmetic.cc', 'src/array.cc',
+                       'src/functions.cc'],
+              depends=['src/arithmetic.hh', 'src/array.hh',
+                       'src/conversion.hh', 'src/functions.hh']))])
+
+    exts = configure_extensions(exts)
 
     classifiers = """\
     Development Status :: 5 - Production/Stable
@@ -188,7 +282,8 @@ def main():
           classifiers=classifiers.split('\n'),
           cmdclass={'build_ext': our_build_ext,
                     'sdist': our_sdist},
-          ext_modules=exts,
+          ext_modules=[Extension(name, **kwargs)
+                       for name, kwargs in exts.items()],
           test_suite = 'nose.collector',
           tests_require=['nose >= 1.0'])
 
