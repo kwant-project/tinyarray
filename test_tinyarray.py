@@ -248,7 +248,7 @@ def test_iteration():
         for shape in [0, 1, 2, 3, (1, 0), (2, 2), (17, 17),
                       (1, 1, 1), (2, 2, 1), (2, 0, 3)]:
             a = make(shape, dtype)
-            assert_equal(tuple(a), a)
+            assert_equal(tuple(ta.array(a)), tuple(a))
 
 
 def test_as_dict_key():
