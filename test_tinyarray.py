@@ -409,7 +409,6 @@ def test_sizeof():
             buffer_size = n_elements * dtype_size[dtype]
             # basic Python object has 3 pointer-sized members
             sizeof_should_be = buffer_size + 3 * machine_wordsize()
-            print(dtype, shape)
             assert_equal(sizeof, sizeof_should_be)
 
 
