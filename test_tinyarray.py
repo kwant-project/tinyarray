@@ -68,7 +68,7 @@ def test_array():
         for a_shape in some_shapes:
             a = make(a_shape, dtype)
 
-            # Creation from list
+            # Creation from list.  This also tests creation from scalars.
             l = a.tolist()
             b = ta.array(l)
             b_shape = shape_of_seq(l)
