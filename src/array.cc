@@ -1381,6 +1381,7 @@ int load_index_seq_as_long(PyObject *obj, long *out, int maxlen)
     assert(maxlen >= 1);
     int len;
     if (PySequence_Check(obj)) {
+        // get a new reference -- don't forget to DECREF on all codepaths
         obj = PySequence_Fast(obj, "Bug in tinyarray, load_index_seq_as_long");
         if (!obj) return -1;
         Py_ssize_t long_len = PySequence_Fast_GET_SIZE(obj);
@@ -1398,6 +1399,7 @@ int load_index_seq_as_long(PyObject *obj, long *out, int maxlen)
             Py_DECREF(index);
             if (*out == -1 && PyErr_Occurred()) goto fail;
         }
+        Py_DECREF(obj);
     } else {
         len = 1;
         *out = PyInt_AsLong(obj);
@@ -1718,7 +1720,6 @@ PyObject *reduce(PyObject *self_, PyObject*)
     self->ndim_shape(&ndim, &shape);
     size_t size_in_bytes = calc_size(ndim, shape) * sizeof(T);
 
-    Py_INCREF(reconstruct);
     PyObject *pyshape = PyTuple_New(ndim);
     for (int i=0; i < ndim; ++i)
         PyTuple_SET_ITEM(pyshape, i, PyInt_FromSize_t(shape[i]));
@@ -1726,8 +1727,15 @@ PyObject *reduce(PyObject *self_, PyObject*)
     PyObject *data = PyBytes_FromStringAndSize((char*)self->data(),
                                                 size_in_bytes);
 
+    // PyTuple_SET_ITEM steals references, so we need to INCREF
+    Py_INCREF(reconstruct);
     PyTuple_SET_ITEM(result, 0, reconstruct);
+    // Py_BuildValue does not steal references, so we need to DECREF
     PyTuple_SET_ITEM(result, 1, Py_BuildValue("(OOO)", pyshape, format, data));
+    Py_DECREF(pyshape);
+    Py_DECREF(format);
+    Py_DECREF(data);
+
     return result;
 }
 
