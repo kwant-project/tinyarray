@@ -41,11 +41,11 @@ Clone the Git repository with ::
 Installation
 ------------
 
-You can build from source with the usual ::
+Tinyarray can be built from source with the usual ::
 
     pip install tinyarray
 
-You can also download the source tarball (or clone it from git) and use ::
+One can also download the source tarball (or clone it from git) and use ::
 
     python setup.py install
 
@@ -83,6 +83,29 @@ Prepared packages exist for
   Follow the `instructions for installing "Kwant"
   <http://kwant-project.org/install#mac-os-x>`_ but install
   ``py27-tinyarray`` instead of ``py27-kwant`` etc.
+
+
+Build configuration
+-------------------
+
+If necessary, the compilation and linking of tinyarray can be configured with
+a build configuration file.  By default, this file is ``build.conf`` in the
+root directory of the tinyarray distribution.  A different path may be
+provided using the ``--configfile=PATH`` option.
+
+The configuration file consists of sections, one for each extension module
+(currently there is only one: ``tinyarray``), led by a ``[section name]``
+header and followed by ``key = value`` lines.
+
+Possible keys are the keyword arguments for ``distutils.core.Extension`` (For
+a complete list, see its `documentation
+<https://docs.python.org/3/distutils/apiref.html#distutils.core.Extension>`_).
+The corresponding values are whitespace-separated lists of strings.
+
+Example ``build.conf`` for compiling Tinyarray with C assertions::
+
+    [tinyarray]
+    undef_macros = NDEBUG
 
 
 Usage example
@@ -126,10 +149,25 @@ Or in the system shell::
     pydoc tinyarray
 
 
+Contributing
+------------
+
+Contributions to tinyarray are most welcome.  Patches may be sent by email, or
+a merge request may be opened on the Project's website.
+
+Please add tests for any new functionality and make sure that all existing
+tests still run.  To run the tests, execute::
+
+    python setup.py test
+
+It is a good idea to enable C assertions as shown above under
+`Build configuration`_.
+
+
 Authors
 -------
 
-The principal developer of Tinyarray is Christoph Groth (SPSMS-INAC-CEA
+The principal developer of Tinyarray is Christoph Groth (CEA
 Grenoble).  His contributions are part of his work at `CEA <http://cea.fr/>`_,
 the French Commissariat à l'énergie atomique et aux énergies alternatives.
 
@@ -137,5 +175,5 @@ The author can be reached at christoph.groth@cea.fr.
 
 Other people that have contributed to Tinyarray include
 
-* Michael Wimmer (Leiden University)
-* Joseph Weston (SPSMS-INAC-CEA Grenoble)
+* Michael Wimmer (Leiden University, TU Delft)
+* Joseph Weston (CEA Grenoble, TU Delft)
