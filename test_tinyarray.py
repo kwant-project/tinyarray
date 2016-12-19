@@ -415,8 +415,12 @@ def test_sizeof():
                 n_elements += (a.ndim * machine_wordsize() +
                                dtype_size[dtype] - 1) // dtype_size[dtype]
             buffer_size = n_elements * dtype_size[dtype]
-            # basic Python object has 3 pointer-sized members
-            sizeof_should_be = buffer_size + 3 * machine_wordsize()
+
+            # A Basic Python object has 3 pointer-sized members, or 5 if in
+            # debug mode.
+            debug = hasattr(sys, "gettotalrefcount")
+            sizeof_should_be = (buffer_size
+                                + machine_wordsize() * (5 if debug else 3))
             assert sizeof == sizeof_should_be
 
 
