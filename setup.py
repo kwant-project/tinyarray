@@ -64,7 +64,7 @@ def configure_extensions(exts, aliases=(), build_summary=None):
         if l != config_file_option or not config_file:
             print('error: Expecting {}=PATH'.format(config_file_option),
                   file=sys.stderr)
-            exit(1)
+            sys.exit(1)
         sys.argv.pop(i)
         break
     else:
@@ -86,7 +86,7 @@ def configure_extensions(exts, aliases=(), build_summary=None):
             if long in configs:
                 print('Error: both {} and {} sections present in {}.'.format(
                     short, long, config_file))
-                exit(1)
+                sys.exit(1)
             configs[long] = configs[short]
             del configs[short]
 
@@ -124,7 +124,7 @@ def configure_extensions(exts, aliases=(), build_summary=None):
     if unknown_sections:
         print('Error: Unknown sections in file {}: {}'.format(
             config_file, ', '.join(unknown_sections)))
-        exit(1)
+        sys.exit(1)
 
     return exts
 
