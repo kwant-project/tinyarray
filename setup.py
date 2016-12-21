@@ -15,13 +15,17 @@ import subprocess
 import os
 import sys
 import collections
-import configparser
 from setuptools import setup, Extension, Command
 from sysconfig import get_platform
 from distutils.errors import DistutilsError, DistutilsModuleError
 from setuptools.command.build_ext import build_ext as build_ext_orig
 from setuptools.command.sdist import sdist as sdist_orig
 from setuptools.command.test import test as test_orig
+
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 
 try:
     from os.path import samefile
@@ -74,7 +78,7 @@ def configure_extensions(exts, aliases=(), build_summary=None):
     configs = configparser.ConfigParser()
     try:
         with open(config_file) as f:
-            configs.read_file(f)
+            configs.readfp(f)
     except IOError:
         config_file_present = False
     else:
@@ -93,9 +97,14 @@ def configure_extensions(exts, aliases=(), build_summary=None):
     #### Apply config from file.  Use [DEFAULT] section for missing sections.
     defaultconfig = configs.defaults()
     for name, kwargs in exts.items():
-        config = configs[name] if name in configs else defaultconfig
-        for key, value in config.items():
+        try:
+            items = configs.items(name)
+        except configparser.NoSectionError:
+            items = defaultconfig.items()
+        else:
+            configs.remove_section(name)
 
+        for key, value in items:
             # Most, but not all, keys are lists of strings
             if key == 'language':
                 pass
@@ -117,8 +126,6 @@ def configure_extensions(exts, aliases=(), build_summary=None):
             kwargs[key] = value
 
         kwargs.setdefault('depends', []).append(config_file)
-        if config is not defaultconfig:
-            del configs[name]
 
     unknown_sections = configs.sections()
     if unknown_sections:
