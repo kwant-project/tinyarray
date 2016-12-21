@@ -21,6 +21,7 @@ from sysconfig import get_platform
 from distutils.errors import DistutilsError, DistutilsModuleError
 from setuptools.command.build_ext import build_ext as build_ext_orig
 from setuptools.command.sdist import sdist as sdist_orig
+from setuptools.command.test import test as test_orig
 
 try:
     from os.path import samefile
@@ -243,6 +244,27 @@ class sdist(sdist_orig):
                     .format(version))
 
 
+# The following class is based on a recipe in
+# http://doc.pytest.org/en/latest/goodpractices.html#manual-integration.
+class test(test_orig):
+    user_options = [('pytest-args=', 'a', "Arguments to pass to pytest")]
+
+    def initialize_options(self):
+        test_orig.initialize_options(self)
+        self.pytest_args = ''
+
+    def run_tests(self):
+        import shlex
+        try:
+            import pytest
+        except:
+            print('The Python package "pytest" is required to run tests.',
+                  file=sys.stderr)
+            sys.exit(1)
+        errno = pytest.main(shlex.split(self.pytest_args))
+        sys.exit(errno)
+
+
 def main():
     exts = collections.OrderedDict([
         ('tinyarray',
@@ -281,11 +303,10 @@ def main():
           platforms=["Unix", "Linux", "Mac OS-X", "Windows"],
           classifiers=classifiers.split('\n'),
           cmdclass={'build_ext': build_ext,
-                    'sdist': sdist},
+                    'sdist': sdist,
+                    'test': test},
           ext_modules=[Extension(name, **kwargs)
-                       for name, kwargs in exts.items()],
-          setup_requires=['pytest-runner'],
-          tests_require=['pytest'])
+                       for name, kwargs in exts.items()])
 
 
 if __name__ == '__main__':
