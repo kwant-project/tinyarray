@@ -240,8 +240,8 @@ class sdist(sdist_orig):
         sdist_orig.make_release_tree(self, base_dir, files)
 
         fname = os.path.join(base_dir, SAVED_VERSION_FILE)
-        # This could be a hard link, so try to delete it first.  Is there any way
-        # to do this atomically together with opening?
+        # This could be a hard link, so try to delete it first.  Is there any
+        # way to do this atomically together with opening?
         try:
             os.remove(fname)
         except OSError:
