@@ -1058,6 +1058,7 @@ PyObject *get_dtype_py(PyObject *self, void *)
     };
     int dtype = int(get_dtype(self));
     assert(dtype < int(NONE));
+    Py_INCREF(dtypes[dtype]);
     return dtypes[dtype];
 }
 
@@ -1500,6 +1501,7 @@ PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min,
                              find_type ? &dt : 0) == 0) {
             if (as_matrix && ndim != 2) {
                 if (ndim > 2) {
+                    for (int d = 0; d < ndim; ++d) Py_DECREF(seqs[d]);
                     PyErr_SetString(PyExc_ValueError,
                                     "Matrix must be 2-dimensional.");
                     return 0;

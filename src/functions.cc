@@ -218,7 +218,9 @@ PyObject *transpose(PyObject *, PyObject *args)
     Dtype dtype = NONE;
     a = array_from_arraylike(a, &dtype);
     if (!a) return 0;
-    return transpose_dtable[int(dtype)](a, 0);
+    PyObject *result = transpose_dtable[int(dtype)](a, 0);
+    Py_DECREF(a);
+    return result;
 }
 
 PyDoc_STRVAR(transpose_doc,
