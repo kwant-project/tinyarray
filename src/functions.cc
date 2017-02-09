@@ -127,7 +127,7 @@ PyObject *zeros(PyObject *, PyObject *args)
 }
 
 PyDoc_STRVAR(zeros_doc,
-"zeros(shape, dtype="DEFAULT_DTYPE")\n\n\
+"zeros(shape, dtype=" DEFAULT_DTYPE ")\n\n\
 Return an array of given shape and type, filled with zeros.");
 
 PyObject *ones(PyObject *, PyObject *args)
@@ -136,7 +136,7 @@ PyObject *ones(PyObject *, PyObject *args)
 }
 
 PyDoc_STRVAR(ones_doc,
-"ones(shape, dtype="DEFAULT_DTYPE")\n\n\
+"ones(shape, dtype=" DEFAULT_DTYPE ")\n\n\
 Return an array of given shape and type, filled with ones.");
 
 template <typename T>
@@ -175,7 +175,7 @@ PyObject *identity(PyObject *, PyObject *args)
 }
 
 PyDoc_STRVAR(identity_doc,
-"identity(n, dtype="DEFAULT_DTYPE")\n\n\
+"identity(n, dtype=" DEFAULT_DTYPE ")\n\n\
 Return an identity matrix of given size and dtype.");
 
 PyObject *array(PyObject *, PyObject *args)
