@@ -228,8 +228,21 @@ def test_dot():
         for sa, sb in shape_pairs:
             a = make(sa, dtype)
             b = make(sb, dtype) - 5
-            assert_almost_equal(ta.dot(ta.array(a), ta.array(b)), np.dot(a, b),
-                                13)
+            dta = ta.dot(ta.array(a), ta.array(b))
+            dnp = np.dot(a, b)
+            # This circumvents a build error on Numpy 1.12.0, where numpy's
+            # iscomplexobj does not return True for complex tinyarrays.
+            # In this case we do the test per element.
+            if np.__version__ != '1.12.0':
+                assert_almost_equal(dta, dnp, 13)
+            elif (getattr(dta, "dtype", None) is complex and
+                  getattr(dta, "shape", None) is not None and
+                  len(dta) > 0):
+                idx = it.product(*[range(i) for i in dta.shape])
+                for i in idx:
+                    assert_almost_equal(dta[i], dnp[i], 13)
+            else:
+                assert_almost_equal(dta, dnp, 13)
 
         shape_pairs = [((), 2), (2, ()),
                        (1, 2),
