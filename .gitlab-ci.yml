@@ -35,7 +35,7 @@ create conda dev package:
   image: condaforge/linux-anvil
   stage: deploy
   only:
-    - master
+    - master@kwant/tinyarray
   script:
     - git clone https://gitlab.kwant-project.org/kwant/conda-recipes.git
     - conda build -c conda-forge --python 3.4 conda-recipes/tinyarray-dev
