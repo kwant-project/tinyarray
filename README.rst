@@ -177,3 +177,4 @@ Other people that have contributed to Tinyarray include
 
 * Michael Wimmer (Leiden University, TU Delft)
 * Joseph Weston (CEA Grenoble, TU Delft)
+* Jörg Behrmann (FU Berlin)
