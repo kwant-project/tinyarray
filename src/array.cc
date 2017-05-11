@@ -956,7 +956,7 @@ bool compare_data(int op, PyObject *a_, PyObject *b_, size_t size)
     const T *data_a = a->data();
     const T *data_b = b->data();
     // Sequences are ordered the same as their first differing elements, see:
-    // https://docs.python.org/2/reference/expressions.html#not-in
+    // https://docs.python.org/3/reference/expressions.html#value-comparisons
     // comparison for "multidimensional" sequences is identical to comparing
     // the flattened sequences when they have the same shape (the present case).
     size_t i = 0;
