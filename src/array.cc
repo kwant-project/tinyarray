@@ -811,34 +811,14 @@ fail:
 // the only documentation for this is in the Python sourcecode
 const Py_hash_t HASH_IMAG = _PyHASH_IMAG;
 
-Py_hash_t hash(long x_)
+Py_hash_t hash(long x)
 {
-    int negative = x_ < 0;
-    unsigned long x = (negative ? -x_ : x_);
-    // x is the absolute value of x_.
-
-    if (x < PyLong_BASE) {
-        if (negative)
-            return x == 1 ? -2 : -long(x);
-        else
-            return x;
-    }
-
-    // PyLong_SHIFT is 15 for 32-bit architectures and 30 for 64-bit.  So a
-    // long contains at most 3 digits.  Therefore, a starting value of n = 2 is
-    // sufficient.
-    Py_uhash_t r = 0;
-    for (int n = 2; n >= 0; --n) {
-        unsigned dig = (x >> (n * PyLong_SHIFT)) & PyLong_MASK;
-        if (r == 0 && dig == 0) continue;
-        r = ((r << PyLong_SHIFT) & _PyHASH_MODULUS) |
-            (r >> (_PyHASH_BITS - PyLong_SHIFT));
-        r += dig;
-        if (r >= _PyHASH_MODULUS) r -= _PyHASH_MODULUS;
-    }
-    if (negative) r = -r;
-    if (r == Py_uhash_t(-1)) r = Py_uhash_t(-2);
-    return r;
+    // For integers the hash is just the integer itself modulo _PyHASH_MODULUS
+    // except for the singular case of -1.
+    // define 'sign' of the correct width to avoid overflow
+    Py_hash_t sign = x < 0 ? -1 : 1;
+    Py_hash_t result = sign * ((sign * x) % _PyHASH_MODULUS);
+    return result == -1 ? -2 : result;
 }
 
 #else
