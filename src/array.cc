@@ -1799,7 +1799,7 @@ template <typename T>
 PyTypeObject Array<T>::pytype = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
     pyname,
-    sizeof(Array<T>) - sizeof(T),   // tp_basicsize
+    sizeof(Array_base),             // tp_basicsize
     sizeof(T),                      // tp_itemsize
     (destructor)PyObject_Del,       // tp_dealloc
     0,                              // tp_print
