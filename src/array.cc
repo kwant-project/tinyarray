@@ -806,11 +806,6 @@ fail:
 // in Python.  As tinyarrays compare equal to equivalent tuples it is important
 // for the hashes to agree.  If not, there will be problems with dictionaries.
 
-long old_hash(long x)
-{
-    return x != -1 ? x : -2;
-}
-
 #if PY_MAJOR_VERSION >= 3
 
 // the only documentation for this is in the Python sourcecode
@@ -857,7 +852,7 @@ const Py_hash_t HASH_IMAG = 1000003L;
 
 Py_hash_t hash(long x)
 {
-    return old_hash(x);
+    return x != -1 ? x : -2;
 }
 
 #endif
@@ -887,10 +882,10 @@ Py_hash_t hash(PyObject *obj)
     T *p = self->data();
     if (ndim == 0) return hash(*p);
 
-    const long mult_init = 1000003, r_init = 0x345678;
-    const long mul_addend = 82520, r_addend = 97531;
+    const Py_uhash_t mult_init = 1000003, r_init = 0x345678;
+    const Py_uhash_t mul_addend = 82520, r_addend = 97531;
     Py_ssize_t i[max_ndim];
-    long mult[max_ndim], r[max_ndim];
+    Py_uhash_t mult[max_ndim], r[max_ndim];
     --ndim;                     // For convenience.
     int d = 0;
     i[0] = shape[0];
@@ -909,9 +904,14 @@ Py_hash_t hash(PyObject *obj)
                 r[d] = r_init;
             }
         } else {
-            if (d == 0) return old_hash(r[0] + r_addend);
+            if (d == 0) {
+                Py_uhash_t r_next = r[0] + r_addend;
+                return r_next == Py_uhash_t(-1) ? -2 : r_next;
+            }
             --d;
-            r[d] = (r[d] ^ old_hash(r[d+1] + r_addend)) * mult[d];
+            Py_uhash_t r_next = r[d+1] + r_addend;
+            r_next = r_next == Py_uhash_t(-1) ? -2 : r_next;
+            r[d] = (r[d] ^ r_next) * mult[d];
             mult[d] += mul_addend + 2 * i[d];
         }
     }
