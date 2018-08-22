@@ -33,12 +33,6 @@ def machine_wordsize():
 
 dtypes = [int, float, complex]
 
-dtype_size = {
-    int: machine_wordsize(),
-    float: 8,
-    complex: 16
-}
-
 some_shapes = [(), 0, 1, 2, 3,
                (0, 0), (1, 0), (0, 1), (2, 2), (17, 17),
                (0, 0, 0), (1, 1, 1), (2, 2, 1), (2, 0, 3)]
@@ -426,8 +420,8 @@ def test_sizeof():
             # at the start of the buffer
             if len(a.shape) > 1:
                 n_elements += (a.ndim * machine_wordsize() +
-                               dtype_size[dtype] - 1) // dtype_size[dtype]
-            buffer_size = n_elements * dtype_size[dtype]
+                               ta.dtype_size[dtype] - 1) // ta.dtype_size[dtype]
+            buffer_size = n_elements * ta.dtype_size[dtype]
 
             # A Basic Python object has 3 pointer-sized members, or 5 if in
             # debug mode.

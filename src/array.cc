@@ -1363,6 +1363,19 @@ MOD_INIT_FUNC(tinyarray)
     PyModule_AddObject(m, "ndarray_complex",
                        (PyObject *)&Array<Complex>::pytype);
 
+    // export information on the sizes of different dtypes in bytes
+    PyObject *dtype_size = PyDict_New();
+    PyDict_SetItem(dtype_size,
+                   (PyObject*)&PyInt_Type,
+                   PyInt_FromSize_t(sizeof(long)));
+    PyDict_SetItem(dtype_size,
+                   (PyObject*)&PyFloat_Type,
+                   PyInt_FromSize_t(sizeof(double)));
+    PyDict_SetItem(dtype_size,
+                   (PyObject*)&PyComplex_Type,
+                   PyInt_FromSize_t(sizeof(Complex)));
+    PyModule_AddObject(m, "dtype_size", dtype_size);
+
     // We never release these references but this is not a problem.  The Python
     // interpreter does the same, see try_complex_special_method in
     // complexobject.c
