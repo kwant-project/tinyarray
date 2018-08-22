@@ -276,8 +276,10 @@ def test_as_dict_key():
 
 def test_hash_equality():
     random.seed(123)
-    maxint = sys.maxsize + 1    # will be typically 2**31 or 2**63
-    int_bits = 63 if maxint > 2**32 else 31
+
+    # These refer to the width of integers stored in a tinyarray.ndarray_int.
+    int_bits = (8 * ta.dtype_size[int]) - 1  # 8 bits per byte, minus 1 sign bit
+    maxint = 2**(int_bits)
 
     special = [float('nan'), float('inf'), float('-inf'),
                0, -1, -1.0, -1 + 0j,
