@@ -814,10 +814,9 @@ long old_hash(long x)
 #if PY_MAJOR_VERSION >= 3
 
 // the only documentation for this is in the Python sourcecode
-typedef Py_hash_t Hash;
-const Hash HASH_IMAG = _PyHASH_IMAG;
+const Py_hash_t HASH_IMAG = _PyHASH_IMAG;
 
-Hash hash(long x_)
+Py_hash_t hash(long x_)
 {
     int negative = x_ < 0;
     unsigned long x = (negative ? -x_ : x_);
@@ -849,24 +848,28 @@ Hash hash(long x_)
 
 #else
 
-typedef long Hash;
-const Hash HASH_IMAG = 1000003L;
+/* In Python 2 hashes were long integers, as indicated by
+   https://github.com/python/cpython/blob/2.7/Include/object.h#L314
+*/
+typedef long Py_hash_t;
+typedef unsigned long Py_uhash_t;
+const Py_hash_t HASH_IMAG = 1000003L;
 
-Hash hash(long x)
+Py_hash_t hash(long x)
 {
     return old_hash(x);
 }
 
 #endif
 
-Hash hash(double x)
+Py_hash_t hash(double x)
 {
     // We used to have our own implementation of this, but the extra function
     // call is quite negligible compared to the execution time of the function.
     return _Py_HashDouble(x);
 }
 
-Hash hash(Complex x)
+Py_hash_t hash(Complex x)
 {
     // x.imag == 0  =>  hash(x.imag) == 0  =>  hash(x) == hash(x.real)
     return hash(x.real()) + HASH_IMAG * hash(x.imag());
@@ -875,7 +878,7 @@ Hash hash(Complex x)
 // This routine calculates the hash of a multi-dimensional array.  The hash is
 // equal to that of an arrangement of nested tuples equivalent to the array.
 template <typename T>
-Hash hash(PyObject *obj)
+Py_hash_t hash(PyObject *obj)
 {
     int ndim;
     size_t *shape;
@@ -1252,9 +1255,9 @@ template PyObject *str<long>(PyObject*);
 template PyObject *str<double>(PyObject*);
 template PyObject *str<Complex>(PyObject*);
 
-template Hash hash<long>(PyObject*);
-template Hash hash<double>(PyObject*);
-template Hash hash<Complex>(PyObject*);
+template Py_hash_t hash<long>(PyObject*);
+template Py_hash_t hash<double>(PyObject*);
+template Py_hash_t hash<Complex>(PyObject*);
 
 template int getbuffer<long>(PyObject*, Py_buffer*, int);
 template int getbuffer<double>(PyObject*, Py_buffer*, int);
