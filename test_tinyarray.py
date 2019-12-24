@@ -11,7 +11,7 @@ import operator, warnings
 import platform
 import itertools as it
 import tinyarray as ta
-from pytest import raises
+from pytest import raises, xfail
 import numpy as np
 from numpy.testing import assert_equal, assert_almost_equal
 import sys
@@ -264,6 +264,10 @@ def test_iteration():
 
 
 def test_as_dict_key():
+    # TODO: remove this once gitlab issue 16 is closed
+    if sys.version_info >= (3, 8, 0):
+        xfail('New version of tuple hash not supported yet.')
+
     n = 100
     d = {}
     for dtype in dtypes + dtypes:
@@ -275,6 +279,10 @@ def test_as_dict_key():
 
 
 def test_hash_equality():
+    # TODO: remove this once gitlab issue 16 is closed
+    if sys.version_info >= (3, 8, 0):
+        xfail('New version of tuple hash not supported yet.')
+
     random.seed(123)
 
     # These refer to the width of integers stored in a tinyarray.ndarray_int.
