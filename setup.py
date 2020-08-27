@@ -78,7 +78,7 @@ def configure_extensions(exts, aliases=(), build_summary=None):
     configs = configparser.ConfigParser()
     try:
         with open(config_file) as f:
-            configs.readfp(f)
+            configs.read_file(f)
     except IOError:
         config_file_present = False
     else:
