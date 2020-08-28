@@ -7,6 +7,7 @@
 // top-level directory of this distribution and at
 // https://gitlab.kwant-project.org/kwant/tinyarray.
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include "array.hh"
 #include "arithmetic.hh"
@@ -62,7 +63,7 @@ PyObject *reconstruct(PyObject *, PyObject *args)
     PyObject *pyshape;
     Format format;
     const void *data;
-    unsigned size_in_bytes;
+    Py_ssize_t size_in_bytes;
     if (!PyArg_ParseTuple(args, "Ois#", &pyshape, &format,
                           &data, &size_in_bytes))
         return 0;
