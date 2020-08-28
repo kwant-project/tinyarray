@@ -365,9 +365,9 @@ PyObject *(*readin_scalar_into_new_dtable[])(PyObject*, bool, int) =
 
 int examine_buffer(PyObject *in, Py_buffer *view, Dtype *dtype)
 {
+    if (!PyObject_CheckBuffer(in)) return -1;
     Dtype dt = NONE;
     memset(view, 0, sizeof(Py_buffer));
-    if (!PyObject_CheckBuffer(in)) return -1;
 
     // I don't know if the following makes much sense: I try to get the buffer
     // using less and less demanding flags. NumPy does the same.
