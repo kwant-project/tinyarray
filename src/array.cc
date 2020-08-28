@@ -103,7 +103,7 @@ Dtype dtype_of_buffer(Py_buffer *view)
     }
 
     // Right now, no composite data structures are supported; if we found a
-    // single supported data type, we should be a the end of the string.
+    // single supported data type, we should be at the end of the string.
     if (*fmt != '\0') return NONE;
 
     return dtype;
