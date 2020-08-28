@@ -59,7 +59,22 @@ inline double number_from_pyobject(PyObject *obj)
 template <>
 inline long number_from_pyobject(PyObject *obj)
 {
-    return PyInt_AsLong(obj);
+    // Before, we solely used PyInt_AsLong, but with Python 3.8 this started to
+    // trigger warnings of implicit truncation
+    // (https://bugs.python.org/issue36048).
+    //
+    // However, truncation is exactly the desired behavior when explicitly
+    // creating a dtype=int array from floats.  To solve the problem, we now
+    // explicitly convert to a Python integer before converting to C long.
+#if PY_MAJOR_VERSION >= 3
+    obj = PyNumber_Long(obj);
+#else
+    obj = PyNumber_Int(obj);
+#endif
+    if (!obj) return -1;
+    long ret = PyInt_AsLong(obj);
+    Py_DECREF(obj);
+    return ret;
 }
 
 template <>
