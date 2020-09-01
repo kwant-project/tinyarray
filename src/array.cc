@@ -88,7 +88,7 @@ Dtype dtype_of_buffer(Py_buffer *view)
     // Currently, we only understand native endianness and alignment.
     if (*fmt == '@') fmt++;
 
-    if (strchr("cbB?hHiIlL", *fmt)) {
+    if (strchr("cbB?hHiIlLqQnN", *fmt)) {
         dtype = LONG;
         fmt++;
     } else if (strchr("fdg", *fmt)) {
@@ -458,6 +458,10 @@ T (*get_buffer_converter(Py_buffer *view))(const void *)
         return number_from_ptr<T, long long>;
     case 'Q':
         return number_from_ptr<T, unsigned long long>;
+    case 'n':
+        return number_from_ptr<T, ssize_t>;
+    case 'N':
+        return number_from_ptr<T, size_t>;
     case 'f':
         return number_from_ptr<T, float>;
     case 'd':
