@@ -180,10 +180,10 @@ inline Tdest _int_from_floatptr_exact(const void *data)
     const Tsrc *ptr = reinterpret_cast<const Tsrc*>(data);
     Tdest result = static_cast<Tdest>(*ptr);
 
-    // Note: the > max and < min tests are unreliable if the float obtained
-    // after rounding has less precision than necessary (which is typically the
-    // case for float and double). The two other tests are supposed to catch
-    // those problems.
+    // Note: the > max and < min tests are unreliable since the floating point
+    // representation of the maximal/minimal value may not be exact. The two
+    // other tests catch these problems.  This approach looks flimsy and is
+    // implementation-dependent, but it is tested rigourosly.
     if (*ptr > std::numeric_limits<Tdest>::max() ||
         *ptr < std::numeric_limits<Tdest>::min() ||
         (*ptr > 0 && result < 0) || (*ptr < 0 && result > 0)) {

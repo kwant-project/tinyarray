@@ -166,15 +166,47 @@ def test_conversion():
                     assert isinstance(dest[0], dest_dtype)
                     assert src == dest
 
-    # Check for overflow.
-    long_overflow = [1e300, np.array([1e300])]
-    # This check only works for Python 2.
-    if 18446744073709551615 > sys.maxsize:
-        long_overflow.extend([np.array([18446744073709551615], np.uint64),
-                              18446744073709551615])
+    # Check correct overflow detection.  We assume a typical architecture:
+    # sys.maxsize is also the maximum size of an integer held in a tinyarray
+    # array, and that Python floats are double-precision IEEE numbers.
+    for n in [10**100, -10**100, 123 * 10**20, -2 * sys.maxsize,
+              sys.maxsize + 1, np.array(sys.maxsize + 1),
+              -sys.maxsize - 2]:
+        raises(OverflowError, ta.array, n, int)
 
-    for s in long_overflow:
-        raises(OverflowError, ta.array, s, int)
+    # Check that values just below the threshold of overflow work.
+    for n in [sys.maxsize, np.array(sys.maxsize),
+              -sys.maxsize - 1, np.array(-sys.maxsize - 1)]:
+        ta.array(n, int)
+
+    # If tinyarray integers are longer than 32 bit, numbers around the maximal
+    # and minimal values cannot be represented exactly as double precision
+    # floating point numbers.  Check correct overflow detection also in this
+    # case.
+    n = sys.maxsize + 1
+    for dtype in [float, np.float64, np.float32]:
+        # The following assumes that n can be represented exactly.  This should
+        # be true for typical (all?) architectures.
+        assert dtype(n) == n
+        for factor in [1, 1.0001, 1.1, 2, 5, 123, 1e5]:
+
+            for x in [n, min(-n-1, np.nextafter(-n, -np.inf, dtype=dtype))]:
+                x = dtype(factor) * dtype(x)
+                raises(OverflowError, ta.array, x, int)
+                if dtype is not float:
+                    # This solicitates the buffer interface.
+                    x = np.array(x)
+                    assert(x.dtype == dtype)
+                    raises(OverflowError, ta.array, x, int)
+
+            for x in [-n, min(n-1, np.nextafter(n, 0, dtype=dtype))]:
+                x = dtype(x) / dtype(factor)
+                ta.array(x, int)
+                if dtype is not float:
+                    # This solicitates the buffer interface.
+                    x = np.array(x)
+                    assert(x.dtype == dtype)
+                    ta.array(x, int)
 
 
 def test_special_constructors():
