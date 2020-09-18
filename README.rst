@@ -12,7 +12,9 @@ enough.)
 Unlike Python's built-in tuples, Tinyarrays support mathematical
 operations like element-wise addition and matrix multiplication.  Unlike
 Numpy arrays, Tinyarrays can be used as dictionary keys because they are
-hashable and immutable.
+hashable and immutable.  What is more, tinyarrays are equivalent to
+tuples with regard to hashing and comparisons: a dictionary or set with
+tinyarray keys may by transparently indexed by tuples.
 
 The module's interface is a subset of that of NumPy and thus should be
 familiar to many.  Whenever an operation is missing from Tinyarray,
