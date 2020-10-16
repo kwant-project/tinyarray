@@ -15,6 +15,7 @@ from pytest import raises
 import numpy as np
 from numpy.testing import assert_equal, assert_almost_equal
 import sys
+import ctypes
 import random
 
 
@@ -166,24 +167,33 @@ def test_conversion():
                     assert isinstance(dest[0], dest_dtype)
                     assert src == dest
 
-    # Check correct overflow detection.  We assume a typical architecture:
-    # sys.maxsize is also the maximum size of an integer held in a tinyarray
-    # array, and that Python floats are double-precision IEEE numbers.
-    for n in [10**100, -10**100, 123 * 10**20, -2 * sys.maxsize,
-              sys.maxsize + 1, np.array(sys.maxsize + 1),
-              -sys.maxsize - 2]:
+    # Determine maximum value of the C "long" type.  This is different from
+    # sys.maxsize, notably on 64 bit Windows.
+    maxlong = 2 ** (ctypes.sizeof(ctypes.c_long) * 8 - 1) - 1
+
+    # Check correct overflow detection when integers are used to initialize
+    # integer tinyarrays.
+    for n in [10**100, -10**100, 123 * 10**20, -2 * maxlong,
+              maxlong + 1, np.array(maxlong + 1),
+              -maxlong - 2]:
         raises(OverflowError, ta.array, n, int)
 
-    # Check that values just below the threshold of overflow work.
-    for n in [sys.maxsize, np.array(sys.maxsize),
-              -sys.maxsize - 1, np.array(-sys.maxsize - 1)]:
+    # Same as above, but check that values just under the threshold of overflow
+    # do work.
+    for n in [maxlong, np.array(maxlong),
+              -maxlong - 1, np.array(-maxlong - 1)]:
         ta.array(n, int)
 
-    # If tinyarray integers are longer than 32 bit, numbers around the maximal
-    # and minimal values cannot be represented exactly as double precision
-    # floating point numbers.  Check correct overflow detection also in this
-    # case.
-    n = sys.maxsize + 1
+    # Check correct overflow detection when floating point numbers are used to
+    # initialize integer tinyarrays.
+    #
+    # Correct overflow detection is tricky when tinyarray integers are 64 bit,
+    # since the distance between adjacent floating point numbers is larger than
+    # one for numbers corresponding to large integers.
+    #
+    # The following assumes that Python floats are common double-precision IEEE
+    # numbers.
+    n = maxlong + 1
     for dtype in [float, np.float64, np.float32]:
         # The following assumes that n can be represented exactly.  This should
         # be true for typical (all?) architectures.
